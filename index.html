@@ -217,7 +217,71 @@
         body { background: white; color: black; }
     }
 
-    @media (max-width: 768px) {
+    
+    /* Hız seçimi görsel stili */
+    .speed-select {
+      border-radius: 999px;
+      font-size: 0.8rem;
+      padding: 0.15rem 0.4rem;
+    }
+    .speed-select.speed-1 {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .speed-select.speed-125 {
+      background: #dbeafe;
+      color: #1e3a8a;
+    }
+    .speed-select.speed-150 {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .speed-select.speed-175 {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .speed-select.speed-200 {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Manuel Mobil Görünüm (Samsung Galaxy S22 benzeri) */
+    body[data-view="mobile"] {
+      max-width: 430px;
+      margin: 0 auto;
+      font-size: 0.9rem;
+    }
+    body[data-view="mobile"] .layout {
+      flex-direction: column;
+    }
+    body[data-view="mobile"] nav.sidebar {
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 0.5rem;
+      flex-shrink: 0;
+    }
+    body[data-view="mobile"] .sidebar-section-title {
+      display: none;
+    }
+    body[data-view="mobile"] .sidebar button {
+      width: auto;
+      white-space: nowrap;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+    }
+    body[data-view="mobile"] main.main {
+      padding: 0.75rem;
+    }
+    body[data-view="mobile"] .table-container {
+      max-height: 320px;
+    }
+
+@media (max-width: 768px) {
       body[data-view="desktop"] .layout { flex-direction: column; }
       nav.sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; overflow-x: auto; padding: 0.5rem; flex-shrink: 0; }
       .sidebar-section-title { display: none; }
@@ -496,7 +560,7 @@
             <div class="col">
               <div class="field-group">
                 <div class="field-label">İzleme Hızı</div>
-                <select id="inputVideoSpeed">
+                <select id="inputVideoSpeed" class="speed-select">
                   <option value="1">1x (Normal)</option>
                   <option value="1.25">1.25x</option>
                   <option value="1.5">1.5x</option>
@@ -878,6 +942,24 @@
     localStorage.setItem(VIEW_KEY, mode);
   }
 
+  function applySpeedColor(sel) {
+    if (!sel) return;
+    sel.classList.add("speed-select");
+    sel.classList.remove("speed-1","speed-125","speed-150","speed-175","speed-200");
+    const v = parseFloat(sel.value || "1");
+    if (v >= 1.9) {
+      sel.classList.add("speed-200");
+    } else if (v >= 1.7) {
+      sel.classList.add("speed-175");
+    } else if (v >= 1.5) {
+      sel.classList.add("speed-150");
+    } else if (v >= 1.25) {
+      sel.classList.add("speed-125");
+    } else {
+      sel.classList.add("speed-1");
+    }
+  }
+
   function parseOffDates(str) {
     if (!str) return [];
     return str.split(",")
@@ -1135,17 +1217,20 @@
 
       const tdSpeed = document.createElement("td");
       const selSpeed = document.createElement("select");
+      selSpeed.classList.add("speed-select");
       ["1","1.25","1.5","1.75","2"].forEach(val=>{
         const opt=document.createElement("option");
         opt.value=val; opt.textContent=val+"x";
         if (String(v.speed||1)===val) opt.selected=true;
         selSpeed.appendChild(opt);
       });
+      applySpeedColor(selSpeed);
       selSpeed.addEventListener("change",()=>{
         pushHistory();
         v.speed=parseFloat(selSpeed.value||"1");
         saveState(); renderProfileSelector(); regeneratePlan(profile); renderStats();
         renderCompletionEstimates();
+        applySpeedColor(selSpeed);
       });
       tdSpeed.appendChild(selSpeed);
 
@@ -1582,15 +1667,39 @@
       if (capacity>0){
         let remainingCap=capacity;
         const todaysVideos=[];
-        for (let i=0;i<queue.length;){
+
+        // 1) SIRA ÖNCELİĞİ: Bu günün hedef süresini aşsa bile
+        // sıradaki ilk videoyu güne mutlaka yerleştir.
+        if (queue.length){
+          const first = queue[0];
+          const firstDur = effectiveRemainingMinutes(first);
+          if (firstDur > 0){
+            todaysVideos.push(first.id);
+            // Hedef süreden düş, ama eksiye inse bile sorun değil;
+            // aşağıdaki ek videoları sadece remainingCap pozitifse ekleyeceğiz.
+            remainingCap = Math.max(0, remainingCap - firstDur);
+          }
+          // Kuyruktan çıkar
+          queue.splice(0, 1);
+        }
+
+        // 2) Kalan kapasiteye göre, sıradaki videoları ekle.
+        for (let i=0;i<queue.length && remainingCap>0;){
           const v=queue[i];
           const dur=effectiveRemainingMinutes(v);
-          if (dur<=0){ queue.splice(i,1); continue; }
+          if (dur<=0){ 
+            queue.splice(i,1); 
+            continue; 
+          }
           if (dur<=remainingCap){
             todaysVideos.push(v.id);
-            remainingCap-=dur; queue.splice(i,1);
-          } else break;
+            remainingCap-=dur; 
+            queue.splice(i,1);
+          } else {
+            break;
+          }
         }
+
         if (todaysVideos.length) newPlan[dateStr]={videoIds:todaysVideos};
       }
       currentDate=addDays(currentDate,1); days++;
@@ -1883,10 +1992,10 @@
               ${v.topic?`<span class="pill-small">${v.topic}</span>`:""}
             </div>
           </td>
-          <td>${durPlan}</td>
+          <td class="day-video-duration" data-video-id="${v.id}">${durPlan}</td>
           <td style="min-width:100px;">
             <div style="display:flex; align-items:center; gap:0.25rem;">
-                <select class="day-video-speed-select" data-video-id="${v.id}" style="width:60px; padding:0.2rem;">
+                <select class="day-video-speed-select speed-select" data-video-id="${v.id}" style="width:60px; padding:0.2rem;">
                   <option value="1"${speedVal===1?" selected":""}>1x</option>
                   <option value="1.25"${speedVal===1.25?" selected":""}>1.25</option>
                   <option value="1.5"${speedVal===1.5?" selected":""}>1.5</option>
@@ -1945,14 +2054,34 @@
           </div>`).join("")
       : `<div class="text-xs text-muted">Plan dışı test kaydı yok.</div>`;
 
+    const dailyGoal = getDailyMinutesForDay(profile, currentDate) || 0;
+    const extraStudyMinutesTotal = (extraStudy || []).reduce((s, item) => s + (item.minutes || 0), 0);
+    let initialCheckedMinutes = 0;
+    videoIds.forEach(id => {
+      if (!dailyCheckedIds.includes(id)) return;
+      const v = videosMap[id];
+      if (!v) return;
+      initialCheckedMinutes += effectiveRemainingMinutes(v);
+    });
+    const initialUsedTotal = initialCheckedMinutes + extraStudyMinutesTotal;
+    const initialRemainingGoal = Math.max(dailyGoal - initialUsedTotal, 0);
+
     container.innerHTML = `
       <div class="flex-between mb-1">
         <div>
            <div class="text-xs text-muted"><strong>Planlanan Süre:</strong> ${totalDayMinutes} dk</div>
+           <div class="text-xs text-muted" id="dailyGoalSummary">
+              Hedef: ${dailyGoal} dk · Tamamlanan: <span id="dailyUsedMinutes">${Math.round(initialUsedTotal)}</span> dk (Plan: ${Math.round(initialCheckedMinutes)}, Ekstra: ${Math.round(extraStudyMinutesTotal)}) ·
+              Kalan: <span id="dailyRemainingMinutes">${Math.round(initialRemainingGoal)}</span> dk
+           </div>
         </div>
-        <div>
-           <button type="button" class="btn-ghost text-xs" id="btnCheckAllDay">Tümünü Seç</button>
-           <button type="button" class="btn-ghost text-xs" id="btnUncheckAllDay">Kaldır</button>
+        <div style="text-align:right;">
+           <div class="text-xs text-muted" id="dailyExtraSuggestion" style="margin-bottom:0.25rem;"></div>
+           <div>
+             <button type="button" class="btn-ghost text-xs" id="btnCheckAllDay">Tümünü Seç</button>
+             <button type="button" class="btn-ghost text-xs" id="btnUncheckAllDay">Kaldır</button>
+             <button type="button" class="btn-ghost text-xs" id="btnAutoFillExtra">Kalan Süreye Göre Video Ekle</button>
+           </div>
         </div>
       </div>
       <div class="progress-wrap mb-1">
@@ -2042,44 +2171,205 @@
     });
 
     const dayCheckboxes = container.querySelectorAll(".day-video-checkbox");
+    const daySpeedSelects = container.querySelectorAll(".day-video-speed-select");
     const progressBar = document.getElementById("dailyProgressBar");
-    function recalcProgress() {
-      const checkedMinutes = Array.from(dayCheckboxes).reduce((sum,el)=>{
+    const usedSpan = document.getElementById("dailyUsedMinutes");
+    const remainingSpan = document.getElementById("dailyRemainingMinutes");
+    const extraSuggestionEl = document.getElementById("dailyExtraSuggestion");
+    const btnAutoFillExtra = document.getElementById("btnAutoFillExtra");
+
+    function computeCheckedRealMinutes() {
+      let base = Array.from(dayCheckboxes).reduce((sum, el) => {
         if (!el.checked) return sum;
-        const v=videosMap[el.dataset.videoId];
+        const v = videosMap[el.dataset.videoId];
         return sum + (v ? effectiveRemainingMinutes(v) : 0);
-      },0);
-      const pct = totalDayMinutes===0 ? 0 : Math.round((checkedMinutes/totalDayMinutes)*100);
-      if (progressBar) progressBar.style.width=pct+"%";
+      }, 0);
+      const extraMins = (extraStudy || []).reduce((s, item) => s + (item.minutes || 0), 0);
+      return base + extraMins;
     }
-    dayCheckboxes.forEach(cb=>{
-      cb.addEventListener("change",()=>{
-        const id=cb.dataset.videoId;
+
+    function updateExtraSuggestion() {
+      if (!extraSuggestionEl || !btnAutoFillExtra) return;
+      const allDone = dayCheckboxes.length > 0 && Array.from(dayCheckboxes).every(cb => cb.checked);
+      const used = computeCheckedRealMinutes();
+      const remaining = Math.max(dailyGoal - used, 0);
+
+      if (!allDone) {
+        btnAutoFillExtra.disabled = true;
+        extraSuggestionEl.textContent = "Ek video eklemek için önce bugünkü listedeki videoları tamamla.";
+        return;
+      }
+
+      if (remaining < 1) {
+        btnAutoFillExtra.disabled = true;
+        extraSuggestionEl.textContent = "Bugünkü hedef süren doldu. İstersen yine de manuel olarak video taşıyabilirsin.";
+        return;
+      }
+
+      btnAutoFillExtra.disabled = false;
+      extraSuggestionEl.textContent = `Bugün için yaklaşık ${Math.round(remaining)} dk hedef süren kaldı. Butona basarsan, bu süreye en fazla 2x hızda sığacak kadar yeni video bugüne taşınır.`;
+    }
+
+    function updateGoalSummary() {
+      const used = computeCheckedRealMinutes();
+      if (usedSpan) usedSpan.textContent = Math.round(used);
+      if (remainingSpan) {
+        const rem = Math.max(dailyGoal - used, 0);
+        remainingSpan.textContent = Math.round(rem);
+      }
+      updateExtraSuggestion();
+    }
+
+    function recalcProgress() {
+      const checkedMinutes = computeCheckedRealMinutes();
+      let dynamicTotal = 0;
+      videoIds.forEach(id => {
+        const v = videosMap[id];
+        if (v) dynamicTotal += effectiveRemainingMinutes(v);
+      });
+      const pct = dynamicTotal===0 ? 0 : Math.round((checkedMinutes/dynamicTotal)*100);
+      if (progressBar) progressBar.style.width=pct+"%";
+      updateGoalSummary();
+    }
+
+    dayCheckboxes.forEach(cb => {
+      cb.addEventListener("change", () => {
+        const id = cb.dataset.videoId;
         if (cb.checked) {
           if (!dailyCheckedIds.includes(id)) dailyCheckedIds.push(id);
         } else {
-          dailyCheckedIds = dailyCheckedIds.filter(x=>x!==id);
+          dailyCheckedIds = dailyCheckedIds.filter(x => x !== id);
         }
         recalcProgress();
       });
     });
+
+    daySpeedSelects.forEach(sel => {
+      applySpeedColor(sel);
+      sel.addEventListener("change", () => {
+        const id = sel.dataset.videoId;
+        const v = profile.videos.find(vid => vid.id === id);
+        if (!v) return;
+        let val = parseFloat(sel.value || "1");
+        if (!val || val <= 0) val = 1;
+        pushHistory();
+        v.speed = val;
+        saveState();
+        renderVideos();
+        renderStats();
+        renderCompletionEstimates();
+        const durCell = container.querySelector(`.day-video-duration[data-video-id="${id}"]`);
+        if (durCell) {
+          durCell.textContent = effectiveRemainingMinutes(v);
+        }
+        applySpeedColor(sel);
+        recalcProgress();
+      });
+    });
+
+    // Başlangıçta özet ve ilerleme çubuğunu güncelle
+    recalcProgress();
 
     const btnCheckAll = document.getElementById("btnCheckAllDay");
     if (btnCheckAll) {
       btnCheckAll.addEventListener("click",()=>{
         dayCheckboxes.forEach(cb=>{cb.checked=true;});
         dailyCheckedIds = videoIds.slice();
-        if (progressBar) progressBar.style.width = totalDayMinutes===0 ? "0%" : "100%";
+        recalcProgress();
       });
     }
     const btnUncheckAll = document.getElementById("btnUncheckAllDay");
     if (btnUncheckAll) {
       btnUncheckAll.addEventListener("click",()=>{
         dayCheckboxes.forEach(cb=>{cb.checked=false;});
-        dailyCheckedIds=[]; if (progressBar) progressBar.style.width="0%";
+        dailyCheckedIds=[];
+        recalcProgress();
       });
     }
-    
+
+    if (btnAutoFillExtra) {
+      btnAutoFillExtra.addEventListener("click", () => {
+        const remaining = Math.max(dailyGoal - computeCheckedRealMinutes(), 0);
+        if (remaining < 1) {
+          alert("Kalan hedef süre yok veya çok düşük. Yeni video eklenmedi.");
+          return;
+        }
+
+        const planDatesAll = Object.keys(profile.plan || {}).sort();
+        const futureDates = planDatesAll.filter(d => d > currentDate);
+        const candidates = [];
+
+        futureDates.forEach(dateStr => {
+          const entry = profile.plan[dateStr];
+          if (!entry) return;
+          (entry.videoIds || []).forEach(id => {
+            const v = videosMap[id];
+            if (!v || v.done) return;
+            const base = v.remainingMinutes || 0;
+            if (!base || base <= 0) return;
+            const assumedSpeed = Math.min((v.speed && v.speed > 0 ? v.speed : 1), 2);
+            const realCost = base / assumedSpeed;
+            candidates.push({ fromDate: dateStr, id, realCost });
+          });
+        });
+
+        if (!candidates.length) {
+          alert("Gelecek günlerde bugüne taşınabilecek uygun video bulunamadı.");
+          return;
+        }
+
+        let selected = [];
+        let totalReal = 0;
+        for (const c of candidates) {
+          // Sıra önceliğini korumak için:
+          // Bir videonun süresi kalan hedefi aşıyorsa
+          // SONRAKİ videolara geçmeyip döngüyü kırıyoruz.
+          if (totalReal + c.realCost > remaining + 0.1) break;
+          selected.push(c);
+          totalReal += c.realCost;
+        }
+
+        if (!selected.length) {
+          alert("Kalan süreye 2x hızda sığacak video bulunamadı. Hedef süreni biraz esnetebilirsin.");
+          return;
+        }
+
+        pushHistory();
+        const p = getActiveProfile();
+        const plan = p.plan || (p.plan = {});
+        const targetEntry = plan[currentDate] || (plan[currentDate] = { videoIds: [] });
+        const existingIds = new Set(targetEntry.videoIds);
+
+        const grouped = {};
+        selected.forEach(c => {
+          grouped[c.fromDate] = grouped[c.fromDate] || [];
+          grouped[c.fromDate].push(c.id);
+        });
+
+        Object.keys(grouped).forEach(dateStr => {
+          const ids = grouped[dateStr];
+          const entry = plan[dateStr];
+          if (!entry) return;
+          entry.videoIds = (entry.videoIds || []).filter(id => !ids.includes(id));
+          if (!entry.videoIds.length) {
+            delete plan[dateStr];
+          }
+          ids.forEach(id => {
+            if (!existingIds.has(id)) {
+              targetEntry.videoIds.push(id);
+              existingIds.add(id);
+            }
+          });
+        });
+
+        saveState();
+        renderDailyPlan();
+        renderStats();
+        renderCompletionEstimates();
+        alert(`Kalan süreye yaklaşık ${Math.round(totalReal)} dk'lık ${selected.length} video bugüne taşındı.`);
+      });
+    }
+
     // Auto Save Listeners for Inputs (Bug fix for data loss)
     const autoSaveInputs = () => {
         const p = getActiveProfile();
@@ -3020,6 +3310,11 @@
     }
 
     loadState();
+
+    document.querySelectorAll("select.speed-select").forEach(sel=>{
+      applySpeedColor(sel);
+      sel.addEventListener("change",()=>applySpeedColor(sel));
+    });
 
     document.querySelectorAll("nav.sidebar button").forEach(btn=>{
       btn.addEventListener("click",()=>setActivePage(btn.dataset.page));
