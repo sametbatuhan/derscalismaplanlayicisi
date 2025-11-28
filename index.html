@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ders Çalışma Planlayıcısı</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Modern Renk Paleti */
+      --bg: #f8fafc;
+      --bg-alt: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-soft: #eff6ff;
+      --accent-text: #1d4ed8;
+      
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-soft: #fef2f2;
+      --danger-text: #b91c1c;
+
+      --success: #10b981;
+      --success-soft: #d1fae5;
+      --success-text: #047857;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+      --radius-full: 9999px;
+
+      --sidebar-bg: #ffffff;
+      --sidebar-text: #334155;
+      --sidebar-active-bg: #eff6ff;
+      --sidebar-active-text: #2563eb;
+      --sidebar-border: #e2e8f0;
+    }
+
+    body[data-theme="dark"] {
+      --bg: #0f172a;
+      --bg-alt: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent-hover: #3b82f6;
+      --accent-soft: #172554;
+      --accent-text: #bfdbfe;
+      --border: #334155;
+      --danger: #f87171;
+      --danger-soft: #450a0a;
+      --danger-text: #fecaca;
+      --success: #34d399;
+      --success-soft: #064e3b;
+      --success-text: #a7f3d0;
+      --sidebar-bg: #020617;
+      --sidebar-text: #cbd5e1;
+      --sidebar-active-bg: #1e293b;
+      --sidebar-active-text: #60a5fa;
+      --sidebar-border: #1f2937;
+    }
+
+    * { box-sizing: border-box; outline: none; }
+    
+    /* Layout Fix: Scrollbar inside content only */
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+    }
+
+    #app { height: 100%; display: flex; flex-direction: column; }
+
+    /* Header */
+    header.app-header {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.5rem; background: var(--bg-alt);
+      border-bottom: 1px solid var(--border); z-index: 50;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-left, .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .app-title { font-weight: 700; font-size: 1.2rem; color: var(--text); }
+    .small-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
+    #activeProfileSummary { font-size: 0.8rem; color: var(--text-muted); background: var(--bg); padding: 0.2rem 0.6rem; border-radius: var(--radius-full); border: 1px solid var(--border); }
+
+    /* Undo/Redo */
+    .history-controls { display: flex; gap: 0.25rem; margin-right: 1rem; border-right: 1px solid var(--border); padding-right: 1rem; }
+    .btn-icon { background: transparent; color: var(--text); border: 1px solid var(--border); width: 32px; height: 32px; padding: 0; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; }
+    .btn-icon:hover:not(:disabled) { background: var(--bg); color: var(--accent); border-color: var(--accent); }
+    .btn-icon:disabled { opacity: 0.3; cursor: default; }
+
+    /* Controls */
+    select, input, button, textarea { font-family: inherit; font-size: 0.9rem; transition: all 0.2s ease; }
+    select, input[type="text"], input[type="number"], input[type="date"], textarea {
+      padding: 0.5rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); width: 100%; min-width: 0; 
+    }
+    select:focus, input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    
+    .small-input { min-width: 60px !important; width: 70px !important; }
+    .medium-input { min-width: 100px !important; flex: 1; }
+    
+    button {
+      border-radius: var(--radius-full); border: none; padding: 0.5rem 1.25rem; cursor: pointer;
+      background: var(--accent); color: white; font-weight: 500; display: inline-flex;
+      align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); box-shadow: none; }
+    button.btn-ghost:hover { background: var(--bg); color: var(--text); border-color: var(--text-muted); }
+    button.btn-danger { background: var(--danger); color: white; }
+    button.btn-danger:hover { background: var(--danger-text); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* Layout Content */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+    nav.sidebar {
+      width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border);
+      padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--text-muted); padding: 0 0.75rem; margin-top: 1rem; margin-bottom: 0.25rem; }
+    .sidebar button { width: 100%; justify-content: flex-start; border-radius: var(--radius-md); padding: 0.6rem 1rem; background: transparent; border: none; color: var(--sidebar-text); font-size: 0.95rem; font-weight: 500; transition: all 0.2s; }
+    .sidebar button:hover { background: var(--bg); color: var(--text); }
+    .sidebar button.active { background: var(--sidebar-active-bg); color: var(--sidebar-active-text); font-weight: 600; }
+    
+    main.content { flex: 1; padding: 2rem; overflow-y: auto; background: var(--bg); }
+    .page { display: none; animation: fadeIn 0.3s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Components */
+    .card { background: var(--bg-alt); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .card-title { font-weight: 600; font-size: 1.1rem; color: var(--text); }
+    .card-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.4; }
+
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+    .row > .col { flex: 1; min-width: 240px; }
+    .field-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+    .field-label { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
+
+    .pill { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; background: var(--accent-soft); color: var(--accent-text); }
+    .pill-small { display: inline-block; font-size: 0.7rem; padding: 0.1rem 0.5rem; border-radius: var(--radius-full); background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); margin-right: 0.25rem; }
+
+    .table-container { max-height: 400px; overflow: auto; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-alt); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    th { font-weight: 600; font-size: 0.8rem; color: var(--text-muted); background: var(--bg); position: sticky; top: 0; z-index: 2; text-transform: uppercase; }
+    tr:hover td { background: var(--bg); }
+    td input[type="text"], td input[type="number"], td select { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+
+    .progress-wrap { width: 100%; height: 0.6rem; border-radius: var(--radius-full); background: var(--bg); overflow: hidden; border: 1px solid var(--border); }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.4s ease; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .stat-card { padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-alt); display: flex; flex-direction: column; }
+    .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+    .stat-extra { font-size: 0.8rem; color: var(--text-muted); }
+
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.5rem; }
+    .calendar-day-header { text-align: center; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; padding-bottom: 0.5rem; }
+    .calendar-cell { min-height: 80px; border-radius: var(--radius-md); border: 1px solid var(--border); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; cursor: pointer; background: var(--bg-alt); transition: all 0.2s; }
+    .calendar-cell:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .calendar-cell.off { background: var(--danger-soft); border-color: var(--danger-text); opacity: 0.8; border-style: dashed; }
+    .calendar-cell.today { border: 2px solid var(--accent); background: var(--accent-soft); }
+    .calendar-tag { font-size: 0.7rem; border-radius: var(--radius-full); padding: 0.15rem 0.5rem; font-weight: 500; }
+    .calendar-tag.plan { background: var(--accent-soft); color: var(--accent-text); }
+    .calendar-tag.worked { background: #dcfce7; color: #166534; }
+
+    .alert { font-size: 0.9rem; border-radius: var(--radius-md); padding: 0.75rem 1rem; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5; }
+    .alert-danger { border-color: var(--danger-text); background: var(--danger-soft); color: var(--danger-text); }
+    
+    .estimation-bar { background: linear-gradient(to right, var(--bg-alt), var(--accent-soft)); border: 1px solid var(--accent); border-radius: var(--radius-md); padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; color: var(--text); }
+    .est-title { font-weight: 600; font-size: 0.9rem; color: var(--accent-text); }
+    .est-value { font-weight: 700; font-size: 1rem; }
+    .est-details { font-size: 0.8rem; color: var(--text-muted); }
+
+    .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+    .mt-1 { margin-top: 0.5rem; } .mt-2 { margin-top: 1rem; } .mb-1 { margin-bottom: 0.5rem; }
+    .text-muted { color: var(--text-muted); } .text-sm { font-size: 0.85rem; } .text-xs { font-size: 0.75rem; }
+    .link { color: var(--accent); text-decoration: none; font-weight: 500; } .link:hover { text-decoration: underline; }
+    
+    .waiting-screen { text-align: center; padding: 3rem; background: var(--bg-alt); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    .waiting-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent); }
+
+    /* Notes Page */
+    .note-card { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
+    .note-card-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .note-item { margin-bottom: 0.5rem; }
+    .note-item-title { font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 0.1rem; }
+    .note-item-body { font-size: 0.9rem; color: var(--text); white-space: pre-wrap; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    tr.dragging { opacity: 0.4; background: var(--bg); }
+
+    /* Print */
+    @media print {
+        nav.sidebar, header.app-header, #page-notes-controls { display: none !important; }
+        .layout { display: block !important; overflow: visible !important; height: auto !important; }
+        main.content { padding: 0 !important; overflow: visible !important; }
+        #page-notes { display: block !important; }
+        .note-card { border: 1px solid #000 !important; }
+        body { background: white; color: black; }
+    }
+
+    @media (max-width: 768px) {
+      body[data-view="desktop"] .layout { flex-direction: column; }
+      nav.sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; overflow-x: auto; padding: 0.5rem; flex-shrink: 0; }
+      .sidebar-section-title { display: none; }
+      .sidebar button { width: auto; white-space: nowrap; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-view="desktop">
+<div id="app">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="history-controls">
+        <button id="btnUndo" class="btn-icon" title="Geri Al" disabled>↩</button>
+        <button id="btnRedo" class="btn-icon" title="İleri Al" disabled>↪</button>
+      </div>
+      <div>
+        <div class="app-title">Ders Çalışma Planlayıcısı</div>
+        <div id="activeProfileSummary"></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div>
+        <div class="small-label">Profil</div>
+        <div class="row" style="gap:0.5rem; align-items:center;">
+          <select id="profileSelect" style="width: auto;"></select>
+          <button id="btnAddProfile" class="btn-ghost" title="Yeni Profil" style="padding:0.4rem 0.8rem">+</button>
+          <button id="btnDeleteProfile" class="btn-ghost" title="Profili Sil" style="padding:0.4rem 0.8rem">Sil</button>
+        </div>
+      </div>
+      <div>
+        <div class="small-label">Ayarlar</div>
+        <div class="row" style="gap:0.5rem;">
+          <button id="btnToggleTheme" class="btn-ghost">Açık/Koyu</button>
+          <select id="viewModeSelect" style="width:auto;">
+            <option value="desktop">Masaüstü</option>
+            <option value="mobile">Mobil</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-section-title">Planın & Notların</div>
+      <button data-page="daily-plan" class="active">📅 Günlük Plan</button>
+      <button data-page="calendar">🗓️ Takvim</button>
+      <button data-page="notes">📝 Notlar</button>
+      <div class="sidebar-section-title">İçerik Yönetimi</div>
+      <button data-page="videos">🎬 Videolar</button>
+      <button data-page="filters">🔎 Filtreler</button>
+      <div class="sidebar-section-title">Analiz & Ayar</div>
+      <button data-page="stats">📊 İstatistikler</button>
+      <button data-page="settings">⚙️ Ayarlar</button>
+      <button data-page="backup">💾 Yedekleme</button>
+    </nav>
+
+    <main class="content">
+      <!-- GÜNLÜK PLAN -->
+      <section id="page-daily-plan" class="page active">
+        <div id="waitingForStart" class="waiting-screen" style="display:none;">
+            <div class="waiting-title" id="waitingTitle">⏳ Plan Başlangıcı Bekleniyor</div>
+            <p><span id="waitingDateLabel">Seçili profil için plan başlangıç tarihi:</span> <strong id="waitingDateDisplay"></strong></p>
+            <p class="text-muted" id="waitingDesc">Bugün (<span id="waitingTodayDisplay"></span>) henüz çalışma günü değil. O gün gelene kadar dinlen!</p>
+            <div style="margin-top: 1.5rem;">
+                <button id="btnSkipWaitMode" style="background: var(--bg); border: 1px solid var(--accent); color: var(--accent);">Beklemeyi Geç ve Listeden Seç ➔</button>
+                <div class="text-xs text-muted mt-1">Gelecek planını görebilir ve bugünden çalışmaya başlayabilirsin.</div>
+            </div>
+        </div>
+
+        <div id="dailyPlanMainView">
+            <div id="dailyEstimationBar" class="estimation-bar" style="display:none;">
+                 <div>
+                     <div class="est-title">🗓️ Tahmini Bitiş</div>
+                     <div class="est-details">Mevcut temponuz ve video ayarlarınızla bitiş öngörüsü</div>
+                 </div>
+                 <div style="text-align:right;">
+                     <div class="est-value" id="estValueText">Hesaplanıyor...</div>
+                     <div class="est-details" id="estDetailText">...</div>
+                 </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Günlük Plan</div>
+                  <div class="card-subtitle">Bugünün hedefleri, videoları ve notları</div>
+                </div>
+                <div id="dailyPlanHeaderInfo" class="pill"></div>
+              </div>
+              <div id="dailyPlanContent"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Gelecek Planı</div>
+                  <div class="card-subtitle">Diğer günlere atanmış içerikler (Önden gitmek için buradan seçim yap)</div>
+                </div>
+              </div>
+              <div id="otherDaysContent"></div>
+            </div>
+        </div>
+      </section>
+
+      <!-- NOTLAR -->
+      <section id="page-notes" class="page">
+          <div class="card" id="page-notes-controls">
+              <div class="card-header">
+                  <div>
+                      <div class="card-title">Not Defteri</div>
+                      <div class="card-subtitle">Tutulan tüm notları buradan takip edebilir ve filtreleyebilirsin.</div>
+                  </div>
+                  <button id="btnPrintNotes" class="btn-ghost">🖨️ PDF / Yazdır</button>
+              </div>
+              <div class="row">
+                  <div class="col">
+                      <div class="field-group">
+                          <div class="field-label">Ders Filtresi</div>
+                          <select id="noteFilterSubject"><option value="Hepsi">Hepsi</option></select>
+                      </div>
+                  </div>
+                  <div class="col">
+                      <div class="field-group">
+                          <div class="field-label">Başlangıç Tarihi</div>
+                          <input type="date" id="noteFilterStart">
+                      </div>
+                  </div>
+                  <div class="col">
+                      <div class="field-group">
+                          <div class="field-label">Bitiş Tarihi</div>
+                          <input type="date" id="noteFilterEnd">
+                      </div>
+                  </div>
+                  <div class="col" style="flex:0;">
+                      <div class="field-group">
+                          <div class="field-label">&nbsp;</div>
+                          <button id="btnApplyNoteFilter">Filtrele</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div id="notesListContainer"></div>
+      </section>
+
+      <!-- AYARLAR -->
+      <section id="page-settings" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Planlama Ayarları</div>
+              <div class="card-subtitle">Çalışma rutini ve takvim ayarlarını buradan yapabilirsin.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Başlangıç Tarihi</div>
+                <input type="date" id="inputStartDate" />
+                <div class="text-xs text-muted">Plan bu tarihten itibaren oluşturulur. Eğer bu tarih bugünden ilerideyse ana ekranda bekleme modu açılır.</div>
+              </div>
+              <div class="field-group">
+                <div class="field-label">Çalışılmayacak Günler (Tatiller)</div>
+                <div class="text-xs text-muted mb-1">Format: gg/aa/yyyy, virgülle ayrılmış</div>
+                <textarea id="inputOffDates" rows="3" placeholder="Örn: 23/04/2026, 19/05/2026"></textarea>
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-label mb-1">Günlük Hedef Süre (Dakika)</div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                <div class="field-group"><div class="field-label">Pazartesi</div><input type="number" id="mins-mon" min="0" /></div>
+                <div class="field-group"><div class="field-label">Salı</div><input type="number" id="mins-tue" min="0" /></div>
+                <div class="field-group"><div class="field-label">Çarşamba</div><input type="number" id="mins-wed" min="0" /></div>
+                <div class="field-group"><div class="field-label">Perşembe</div><input type="number" id="mins-thu" min="0" /></div>
+                <div class="field-group"><div class="field-label">Cuma</div><input type="number" id="mins-fri" min="0" /></div>
+                <div class="field-group"><div class="field-label">Cumartesi</div><input type="number" id="mins-sat" min="0" /></div>
+                <div class="field-group"><div class="field-label">Pazar</div><input type="number" id="mins-sun" min="0" /></div>
+              </div>
+              <div class="mt-2 row">
+                <button id="btnSaveAndRegenerate" style="width:100%;">💾 Kaydet ve Planı Oluştur</button>
+              </div>
+            </div>
+          </div>
+          <div class="alert mt-2">
+            <strong>Bilgi:</strong> Plan oluşturulduğunda, henüz izlenmemiş videolar belirlediğin günlük dakikalara göre sırayla günlere dağıtılır.
+          </div>
+        </div>
+      </section>
+
+      <!-- FİLTRELER -->
+      <section id="page-filters" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Filtreler (Toplu İşlem)</div>
+              <div class="card-subtitle">Burada yaptığın filtrelemeler <strong>sadece bu sayfayı</strong> etkiler. Ana videolarda veya planda videoları gizlemez.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Ders Seçimi</div>
+                <select id="filterSubject"></select>
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Konu Seçimi</div>
+                <select id="filterTopic"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Filtrelenmiş Liste</div>
+            <div class="card-subtitle">Seçili kritere uyan videolar</div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50px;">#</th>
+                  <th>Başlık</th>
+                  <th>Ders</th>
+                  <th>Konu</th>
+                  <th style="width:100px;">Kalan (dk)</th>
+                  <th style="width:80px;">Bitti</th>
+                  <th style="width:100px;">İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="filterVideosBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VİDEOLAR -->
+      <section id="page-videos" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Video Kütüphanesi</div>
+              <div class="card-subtitle">Listeye yeni videolar ekleyebilir veya toplu işlem yapabilirsin.</div>
+            </div>
+            <div class="text-sm text-muted" id="videoSummary"></div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Başlık</div>
+                <input type="text" id="inputVideoTitle" placeholder="Video başlığı..." />
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Ders</div>
+                <input type="text" id="inputVideoSubject" placeholder="Örn. Tarih" />
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Konu</div>
+                <input type="text" id="inputVideoTopic" placeholder="Örn. Osmanlı Yükselme" />
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Süre (Dk)</div>
+                <input type="number" id="inputVideoMinutes" min="1" placeholder="45" />
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">İzleme Hızı</div>
+                <select id="inputVideoSpeed">
+                  <option value="1">1x (Normal)</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="1.75">1.75x</option>
+                  <option value="2">2x</option>
+                </select>
+              </div>
+            </div>
+            <div class="col">
+              <div class="field-group">
+                <div class="field-label">Link (Opsiyonel)</div>
+                <input type="text" id="inputVideoLink" placeholder="https://youtube.com/..." />
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 flex-between">
+            <button id="btnAddVideo">✅ Ekle</button>
+            <div class="row" style="gap:0.5rem;">
+                <button id="btnExportCsv" class="btn-ghost">📤 CSV İndir</button>
+                <input type="file" id="csvVideoInput" accept=".csv" style="display:none" />
+                <button id="btnImportCsv" class="btn-ghost">📥 CSV Yükle</button>
+                <button id="btnClearVideos" class="btn-danger">🗑️ Hepsini Sil</button>
+            </div>
+          </div>
+          <div class="alert mt-2 text-xs">
+             <strong>İpucu:</strong> CSV dosyasından toplu yükleme yapabilirsin. Format: Index, Başlık, Ders, Konu, Hız, Dakika, Link...
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Aktif Video Listesi</div>
+            <div class="card-subtitle">Henüz bitmemiş, planlanacak videolar. Sıralamayı değiştirmek için sürükle-bırak yapabilirsin.</div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>Başlık</th>
+                  <th>Ders</th>
+                  <th>Konu</th>
+                  <th style="width:80px;">Hız</th>
+                  <th style="width:80px;">Süre</th>
+                  <th style="width:60px;">Bitti</th>
+                  <th>Link</th>
+                  <th style="width:80px;"></th>
+                </tr>
+              </thead>
+              <tbody id="videoTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header" style="background: var(--bg);">
+            <div class="card-title" style="color:var(--success-text);">Tamamlanan Videolar</div>
+            <div class="card-subtitle">Bitmiş videolar burada listelenir. (Düzenlemek için üzerine tıkla)</div>
+          </div>
+          <div class="table-container">
+             <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>Başlık</th>
+                  <th>Ders</th>
+                  <th>Konu</th>
+                  <th style="width:80px;">Süre</th>
+                  <th>Link</th>
+                  <th style="width:120px;">Durum</th>
+                </tr>
+              </thead>
+              <tbody id="completedVideoTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- İSTATİSTİKLER -->
+      <section id="page-stats" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Genel Durum</div>
+              <div class="card-subtitle">Profil bazlı toplam ilerleme verileri</div>
+            </div>
+          </div>
+          <div class="stat-grid" id="statsOverview"></div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+             <div class="card">
+                <div class="card-header"><div class="card-title">Ders Bazlı Dağılım</div></div>
+                <div id="statsBySubject" class="text-sm"></div>
+             </div>
+          </div>
+          <div class="col">
+             <div class="card">
+                <div class="card-header"><div class="card-title">Son 7 Günlük Performans</div></div>
+                <div id="statsDaily" class="text-sm"></div>
+             </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">İzleme Hızı Tercihleri (Son 7 Gün)</div></div>
+          <div id="statsSpeedUsage" class="text-sm"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Günlük Notlar ve Soru Geçmişi</div></div>
+          <div id="statsNotesHistory" class="text-sm"></div>
+        </div>
+      </section>
+
+      <!-- TAKVİM -->
+      <section id="page-calendar" class="page">
+        <!-- TAHMİNİ BİTİŞ ALANI (TAKVİM SAYFASI İÇİN) -->
+        <div id="calendarEstimationBar" class="estimation-bar" style="display:none; margin-bottom: 1.5rem;">
+             <div>
+                 <div class="est-title">🗓️ Tahmini Bitiş</div>
+                 <div class="est-details">Mevcut temponuz ve video ayarlarınızla bitiş öngörüsü</div>
+             </div>
+             <div style="text-align:right;">
+                 <div class="est-value" id="calEstValueText">Hesaplanıyor...</div>
+                 <div class="est-details" id="calEstDetailText">...</div>
+             </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Takvim</div>
+              <div class="card-subtitle">Aylık görünüm ve çalışma yoğunluğu</div>
+            </div>
+            
+            <div class="row" style="gap:0.5rem; align-items:center;">
+                <button id="btnPrevMonth" class="btn-ghost" style="padding:0.4rem;">&lt;</button>
+                <div class="card-title" id="calendarMonthLabel" style="min-width:140px; text-align:center;"></div>
+                <button id="btnNextMonth" class="btn-ghost" style="padding:0.4rem;">&gt;</button>
+                <button id="btnGoToday" class="btn-ghost text-xs">Bugün</button>
+            </div>
+          </div>
+          <div class="mt-2 mb-2">
+            <button id="btnToggleOffdayMode" class="btn-ghost text-xs">Tatil Günü Seçimi: Kapalı</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+          <div class="chip-row mt-2">
+            <span class="pill-small" style="background:var(--accent-soft); color:var(--accent-text);">Plan: Hedeflenen</span>
+            <span class="pill-small" style="background:#dcfce7; color:#166534;">Çalışıldı: Tamamlanan</span>
+            <span class="pill-small" style="background:var(--danger-soft); color:var(--danger-text);">Tatil</span>
+            <span class="pill-small" style="background:#94a3b8; color:white;">Girilmedi</span>
+          </div>
+          <div id="calendarDayDetails" class="mt-2">
+            <div class="alert">Detay görmek veya tatil günü belirlemek için takvimde bir güne tıkla.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- YEDEKLEME -->
+      <section id="page-backup" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Veri Yedekleme</div>
+              <div class="card-subtitle">Verilerini JSON formatında dışa aktarabilir veya geri yükleyebilirsin.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+                 <button id="btnExportJson" style="width:100%">📤 Yedeği İndir (JSON)</button>
+            </div>
+            <div class="col">
+                <button id="btnImportJsonTrigger" class="btn-danger" style="width:100%">📥 Yedekten Geri Yükle</button>
+            </div>
+          </div>
+          <div class="alert alert-danger mt-2">
+            <strong>Uyarı:</strong> JSON dosyasından geri yükleme yapıldığında mevcut tüm profiller silinir ve dosyadaki verilerle değiştirilir. Lütfen önce mevcut verini yedekle.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  const STORAGE_KEY = "studyPlanner_v1";
+  const THEME_KEY = "studyPlanner_theme";
+  const VIEW_KEY = "studyPlanner_view";
+
+  // UNDO/REDO VARS
+  const historyStack = [];
+  const redoStack = [];
+  const MAX_HISTORY = 20;
+
+  let offdaySelectionMode = false;   // Takvimden tatil günü seçme modu
+  let calendarViewDate = new Date(); // Takvimde şu an görüntülenen ay
+  let skipWaitMode = false;          // Bekleme ekranını geçme modu
+
+  function uuid() {
+    return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  }
+
+  const defaultDailyMinutes = {
+    mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0
+  };
+
+  const state = {
+    profiles: [],
+    activeProfileId: null,
+    ui: {
+      activePage: "daily-plan",
+      filters: { subject: "Hepsi", topic: "Hepsi" }
+    }
+  };
+
+  let dailyCheckedIds = [];
+  let currentCheckedDate = null;
+
+  function todayStr() {
+    const t = new Date();
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, "0");
+    const d = String(t.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  function addDays(dateStr, days) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  function formatDate(dateStr) {
+    if (!dateStr) return "-";
+    const [y, m, d] = dateStr.split("-").map(Number);
+    if (!y || !m || !d) return dateStr;
+    const date = new Date(y, m - 1, d);
+    const dayNames = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+    const dayName = dayNames[date.getDay()];
+    const dd = String(d).padStart(2, "0");
+    const mm = String(m).padStart(2, "0");
+    return `${dd}/${mm}/${y} ${dayName}`;
+  }
+
+  function effectiveRemainingMinutes(v) {
+    const base = v.remainingMinutes || 0;
+    const sp = v.speed && v.speed > 0 ? v.speed : 1;
+    return Math.ceil(base / sp);
+  }
+
+  // --- UNDO / REDO LOGIC ---
+  function pushHistory() {
+    const snapshot = JSON.parse(JSON.stringify(state));
+    historyStack.push(snapshot);
+    if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    redoStack.length = 0;
+    updateUndoRedoUI();
+  }
+
+  function performUndo() {
+    if (historyStack.length === 0) return;
+    const currentState = JSON.parse(JSON.stringify(state));
+    redoStack.push(currentState);
+    
+    const prevState = historyStack.pop();
+    Object.keys(state).forEach(k => delete state[k]);
+    Object.assign(state, prevState);
+    
+    saveState(true); // true = skip pushing history inside saveState
+    renderAll();
+    updateUndoRedoUI();
+  }
+
+  function performRedo() {
+    if (redoStack.length === 0) return;
+    const currentState = JSON.parse(JSON.stringify(state));
+    historyStack.push(currentState);
+    
+    const nextState = redoStack.pop();
+    Object.keys(state).forEach(k => delete state[k]);
+    Object.assign(state, nextState);
+    
+    saveState(true);
+    renderAll();
+    updateUndoRedoUI();
+  }
+
+  function updateUndoRedoUI() {
+    const btnUndo = document.getElementById("btnUndo");
+    const btnRedo = document.getElementById("btnRedo");
+    if(btnUndo) btnUndo.disabled = (historyStack.length === 0);
+    if(btnRedo) btnRedo.disabled = (redoStack.length === 0);
+  }
+
+  // --- STATE MGMT ---
+  const stateProfilesKey = "profiles";
+
+  function createDefaultProfile() {
+    const today = todayStr();
+    return {
+      id: uuid(),
+      name: "Varsayılan",
+      videos: [],
+      settings: {
+        startDate: today,
+        offDates: [],
+        dailyMinutes: { ...defaultDailyMinutes }
+      },
+      plan: {},
+      dayMeta: {},
+      stats: { perDay: {} },
+      currentPlanStart: null
+    };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.profiles)) {
+          Object.assign(state,parsed);
+        }
+      }
+    } catch(e) { console.error("state yüklenemedi",e); }
+
+    if (!state.ui) {
+      state.ui = { activePage:"daily-plan", filters:{subject:"Hepsi",topic:"Hepsi"} };
+    }
+    if (!state.profiles || state.profiles.length===0) {
+      const p = createDefaultProfile();
+      state.profiles = [p];
+      state.activeProfileId = p.id;
+      saveState(true);
+    }
+    if (!state.activeProfileId) state.activeProfileId = state.profiles[0].id;
+    updateUndoRedoUI();
+  }
+
+  function saveState(skipHistory = false) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function getActiveProfile() {
+    return state.profiles.find(p=>p.id===state.activeProfileId) || state.profiles[0];
+  }
+
+  function setActivePage(pageId) {
+    state.ui.activePage = pageId;
+    document.querySelectorAll("section.page").forEach(sec=>{
+      sec.classList.toggle("active", sec.id === `page-${pageId}`);
+    });
+    document.querySelectorAll("nav.sidebar button").forEach(btn=>{
+      btn.classList.toggle("active", btn.dataset.page === pageId);
+    });
+    // Her sayfa değişiminde estimation'ı güncelle
+    if (pageId === 'daily-plan' || pageId === 'calendar') renderCompletionEstimates();
+    if (pageId === 'stats') renderStats();
+    if (pageId === 'notes') renderNotesPage();
+  }
+
+  function setTheme(theme) {
+    document.body.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }
+  function toggleTheme() {
+    const current = document.body.getAttribute("data-theme") || "light";
+    setTheme(current === "light" ? "dark" : "light");
+  }
+  function setViewMode(mode) {
+    if (mode !== "desktop" && mode !== "mobile") mode = "desktop";
+    document.body.setAttribute("data-view", mode);
+    const sel = document.getElementById("viewModeSelect");
+    if (sel) sel.value = mode;
+    localStorage.setItem(VIEW_KEY, mode);
+  }
+
+  function parseOffDates(str) {
+    if (!str) return [];
+    return str.split(",")
+      .map(s=>s.trim())
+      .filter(Boolean)
+      .map(tok=>{
+        const m = tok.match(/^(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{4})$/);
+        if (m) {
+          const dd = String(parseInt(m[1],10)).padStart(2,"0");
+          const mm = String(parseInt(m[2],10)).padStart(2,"0");
+          const yyyy = m[3];
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(tok)) return tok;
+        return null;
+      })
+      .filter(Boolean);
+  }
+  function offDatesToString(arr) {
+    return arr.map(dateStr=>{
+      const [y,m,d] = dateStr.split("-");
+      return `${d}/${m}/${y}`;
+    }).join(", ");
+  }
+  function getDailyMinutesForDay(profile,dateStr) {
+    const [y,m,d] = dateStr.split("-").map(Number);
+    const date = new Date(y,m-1,d);
+    const idx = date.getDay();
+    const dm = profile.settings.dailyMinutes || defaultDailyMinutes;
+    switch(idx) {
+      case 0: return dm.sun || 0;
+      case 1: return dm.mon || 0;
+      case 2: return dm.tue || 0;
+      case 3: return dm.wed || 0;
+      case 4: return dm.thu || 0;
+      case 5: return dm.fri || 0;
+      case 6: return dm.sat || 0;
+      default: return 0;
+    }
+  }
+
+  // --- UI RENDER FUNCTIONS ---
+
+  function renderProfileSelector() {
+    const select = document.getElementById("profileSelect");
+    select.innerHTML = "";
+    state.profiles.forEach(p=>{
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      if (p.id===state.activeProfileId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    const profile = getActiveProfile();
+    const summaryEl = document.getElementById("activeProfileSummary");
+    const activeVideos = profile.videos.filter(v=>!v.done);
+    const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
+    summaryEl.textContent =
+      `${profile.name}: ${activeVideos.length} aktif video · Kalan: ${remainingReal} dk`;
+  }
+  function addProfile() {
+    pushHistory();
+    const name = prompt("Yeni profil adı:");
+    if (!name) return;
+    const p = createDefaultProfile();
+    p.name = name.trim();
+    state.profiles.push(p);
+    state.activeProfileId = p.id;
+    saveState();
+    renderProfileSelector();
+    renderAll();
+  }
+  function deleteProfile() {
+    const profile = getActiveProfile();
+    if (!confirm(`"${profile.name}" profilini silmek istediğine emin misin?`)) return;
+    pushHistory();
+    state.profiles = state.profiles.filter(p=>p.id !== profile.id);
+    if (state.profiles.length === 0) state.profiles.push(createDefaultProfile());
+    state.activeProfileId = state.profiles[0].id;
+    saveState();
+    renderProfileSelector();
+    renderAll();
+  }
+
+  function getCurrentFilters() {
+    return state.ui.filters || { subject:"Hepsi", topic:"Hepsi" };
+  }
+  function renderFilters() {
+    const profile = getActiveProfile();
+    const subjectSelect = document.getElementById("filterSubject");
+    const topicSelect = document.getElementById("filterTopic");
+    const filters = getCurrentFilters();
+    const subjects = Array.from(new Set(profile.videos.map(v=>v.subject).filter(Boolean))).sort();
+    
+    subjectSelect.innerHTML = "";
+    const optAllS = document.createElement("option");
+    optAllS.value = "Hepsi"; optAllS.textContent = "Hepsi";
+    subjectSelect.appendChild(optAllS);
+    subjects.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s; opt.textContent = s;
+      subjectSelect.appendChild(opt);
+    });
+    subjectSelect.value = filters.subject || "Hepsi";
+
+    const filteredVideos = filters.subject==="Hepsi"
+      ? profile.videos
+      : profile.videos.filter(v=>v.subject===filters.subject);
+    const topics = Array.from(new Set(filteredVideos.map(v=>v.topic).filter(Boolean))).sort();
+    
+    topicSelect.innerHTML = "";
+    const optAllT = document.createElement("option");
+    optAllT.value="Hepsi"; optAllT.textContent="Hepsi";
+    topicSelect.appendChild(optAllT);
+    topics.forEach(t=>{
+      const opt=document.createElement("option");
+      opt.value=t; opt.textContent=t;
+      topicSelect.appendChild(opt);
+    });
+    topicSelect.value = filters.topic || "Hepsi";
+
+    renderFilterVideos();
+  }
+
+  // Sadece Filtre Sayfası İçin Geçerli Filtreleme
+  function getFilteredVideosForFiltersPage(videos) {
+    const f = getCurrentFilters();
+    return videos.filter(v=>{
+      if (f.subject!=="Hepsi" && v.subject!==f.subject) return false;
+      if (f.topic!=="Hepsi" && v.topic!==f.topic) return false;
+      return true;
+    });
+  }
+
+  function renderFilterVideos() {
+    const profile = getActiveProfile();
+    const tbody = document.getElementById("filterVideosBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    // Sadece burada filtreleri uyguluyoruz
+    let videos = [...profile.videos];
+    videos = getFilteredVideosForFiltersPage(videos);
+    videos.sort((a,b)=>(a.order||0)-(b.order||0));
+
+    videos.forEach((v,idx)=>{
+      const tr = document.createElement("tr");
+
+      const tdIdx = document.createElement("td");
+      tdIdx.textContent = String(idx+1);
+
+      const tdTitle = document.createElement("td");
+      tdTitle.textContent = v.title || "(başlıksız)";
+
+      const tdSubj = document.createElement("td");
+      tdSubj.textContent = v.subject || "";
+
+      const tdTopic = document.createElement("td");
+      tdTopic.textContent = v.topic || "";
+
+      const tdRem = document.createElement("td");
+      tdRem.textContent = String(v.remainingMinutes || 0);
+
+      const tdDone = document.createElement("td");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!v.done;
+      cb.addEventListener("change",()=>{
+        pushHistory();
+        v.done = cb.checked;
+        if (v.done) v.remainingMinutes = 0;
+        saveState();
+        regeneratePlan(profile);
+        renderVideos(); // Refresh lists
+        renderFilterVideos(); // Refresh this list
+        renderDailyPlan();
+        renderStats();
+        renderProfileSelector();
+      });
+      tdDone.appendChild(cb);
+
+      const tdAct = document.createElement("td");
+      const btnDel = document.createElement("button");
+      btnDel.textContent = "Sil";
+      btnDel.className = "btn-ghost";
+      btnDel.style.padding = "0.25rem 0.5rem";
+      btnDel.style.fontSize = "0.8rem";
+      btnDel.addEventListener("click",()=>{
+        if (!confirm("Bu video silinsin mi?")) return;
+        pushHistory();
+        profile.videos = profile.videos.filter(vid=>vid.id!==v.id);
+        saveState();
+        regeneratePlan(profile);
+        renderVideos();
+        renderFilterVideos();
+        renderDailyPlan();
+        renderStats();
+        renderProfileSelector();
+      });
+      tdAct.appendChild(btnDel);
+
+      tr.append(tdIdx,tdTitle,tdSubj,tdTopic,tdRem,tdDone,tdAct);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- VIDEO KÜTÜPHANESİ (AKTİF ve TAMAMLANANLAR AYRI) ---
+  function renderVideos() {
+    const profile = getActiveProfile();
+    const activeBody = document.getElementById("videoTableBody");
+    const completedBody = document.getElementById("completedVideoTableBody");
+    
+    activeBody.innerHTML = "";
+    completedBody.innerHTML = "";
+
+    // Filtreleri UYGULAMIYORUZ. Ana listede hepsi gözükmeli.
+    let allVideos = [...profile.videos];
+    allVideos.sort((a,b)=>(a.order||0)-(b.order||0));
+
+    const activeVideos = allVideos.filter(v => !v.done);
+    const completedVideos = allVideos.filter(v => v.done);
+
+    // Aktif Videolar Render
+    activeVideos.forEach((v,idx)=>{
+      const tr = document.createElement("tr");
+      tr.setAttribute("draggable","true");
+      tr.dataset.videoId = v.id;
+
+      const tdIdx = document.createElement("td");
+      tdIdx.textContent = String(idx+1);
+
+      const tdTitle = document.createElement("td");
+      const inputTitle = document.createElement("input");
+      inputTitle.type="text"; inputTitle.value = v.title||"";
+      inputTitle.addEventListener("change",()=>{
+        pushHistory(); v.title = inputTitle.value; saveState();
+      });
+      tdTitle.appendChild(inputTitle);
+
+      const tdSubj = document.createElement("td");
+      const inputSubj = document.createElement("input");
+      inputSubj.type="text"; inputSubj.value = v.subject||"";
+      inputSubj.addEventListener("change",()=>{
+        pushHistory(); v.subject = inputSubj.value; saveState(); renderFilters();
+      });
+      tdSubj.appendChild(inputSubj);
+
+      const tdTopic = document.createElement("td");
+      const inputTopic = document.createElement("input");
+      inputTopic.type="text"; inputTopic.value = v.topic||"";
+      inputTopic.addEventListener("change",()=>{
+        pushHistory(); v.topic = inputTopic.value; saveState(); renderFilters();
+      });
+      tdTopic.appendChild(inputTopic);
+
+      const tdSpeed = document.createElement("td");
+      const selSpeed = document.createElement("select");
+      ["1","1.25","1.5","1.75","2"].forEach(val=>{
+        const opt=document.createElement("option");
+        opt.value=val; opt.textContent=val+"x";
+        if (String(v.speed||1)===val) opt.selected=true;
+        selSpeed.appendChild(opt);
+      });
+      selSpeed.addEventListener("change",()=>{
+        pushHistory();
+        v.speed=parseFloat(selSpeed.value||"1");
+        saveState(); renderProfileSelector(); regeneratePlan(profile); renderStats();
+        renderCompletionEstimates();
+      });
+      tdSpeed.appendChild(selSpeed);
+
+      const tdRem = document.createElement("td");
+      const inputRem = document.createElement("input");
+      inputRem.type="number"; inputRem.min="0";
+      inputRem.value = v.remainingMinutes ?? 0;
+      inputRem.addEventListener("change",()=>{
+        pushHistory();
+        const val=parseInt(inputRem.value,10);
+        v.remainingMinutes = isNaN(val)?0:val;
+        if (v.remainingMinutes<=0){ v.remainingMinutes=0; v.done=true; }
+        saveState(); renderProfileSelector(); regeneratePlan(profile); renderVideos();
+        renderCompletionEstimates();
+      });
+      tdRem.appendChild(inputRem);
+
+      const tdDone = document.createElement("td");
+      const cb = document.createElement("input");
+      cb.type="checkbox"; cb.checked=false; 
+      cb.addEventListener("change",()=>{
+        pushHistory();
+        v.done = true;
+        v.remainingMinutes = 0;
+        saveState(); renderProfileSelector(); regeneratePlan(profile); renderVideos();
+        renderCompletionEstimates();
+      });
+      tdDone.appendChild(cb);
+
+      const tdLink = document.createElement("td");
+      const inputLink = document.createElement("input");
+      inputLink.type="text"; inputLink.value = v.link||"";
+      inputLink.placeholder = "Link";
+      inputLink.addEventListener("change",()=>{
+        pushHistory(); v.link = inputLink.value.trim(); saveState();
+      });
+      tdLink.appendChild(inputLink);
+
+      const tdActions = document.createElement("td");
+      const btnDel = document.createElement("button");
+      btnDel.textContent="Sil"; btnDel.className="btn-ghost";
+      btnDel.style.fontSize="0.8rem"; btnDel.style.padding="0.25rem 0.5rem";
+      btnDel.addEventListener("click",()=>{
+        pushHistory();
+        profile.videos = profile.videos.filter(vid=>vid.id!==v.id);
+        saveState(); renderProfileSelector(); regeneratePlan(profile); renderAll();
+      });
+      tdActions.appendChild(btnDel);
+
+      tr.append(tdIdx,tdTitle,tdSubj,tdTopic,tdSpeed,tdRem,tdDone,tdLink,tdActions);
+      activeBody.appendChild(tr);
+    });
+
+    // Drag-drop for Active Videos
+    let draggedId=null;
+    activeBody.querySelectorAll("tr").forEach(tr=>{
+      tr.addEventListener("dragstart",()=>{
+        draggedId=tr.dataset.videoId; tr.classList.add("dragging");
+      });
+      tr.addEventListener("dragend",()=>{
+        tr.classList.remove("dragging"); draggedId=null;
+      });
+      tr.addEventListener("dragover",(e)=>{
+        e.preventDefault();
+        const target=tr;
+        if (!draggedId || target.dataset.videoId===draggedId) return;
+        const rows=Array.from(activeBody.children);
+        const draggedIndex = rows.findIndex(r=>r.dataset.videoId===draggedId);
+        const targetIndex  = rows.findIndex(r=>r===target);
+        if (draggedIndex<targetIndex)
+          activeBody.insertBefore(rows[draggedIndex], target.nextSibling);
+        else
+          activeBody.insertBefore(rows[draggedIndex], target);
+      });
+      tr.addEventListener("drop", (e) => {
+         pushHistory();
+         const newOrderMap={};
+         Array.from(activeBody.children).forEach((row,idx)=>{
+            newOrderMap[row.dataset.videoId]=idx+1;
+         });
+         profile.videos.forEach(v=>{
+            if (newOrderMap[v.id]!=null) v.order=newOrderMap[v.id];
+         });
+         saveState();
+      });
+    });
+
+    // Completed Videos (Editable)
+    completedVideos.forEach((v,idx)=>{
+      const tr = document.createElement("tr");
+      tr.style.opacity = "0.7";
+      tr.style.background = "#f0fff4";
+
+      const tdIdx = document.createElement("td");
+      tdIdx.textContent = String(idx+1);
+
+      // Editable fields for completed videos
+      const tdTitle = document.createElement("td");
+      const inputTitle = document.createElement("input");
+      inputTitle.type = "text"; inputTitle.value = v.title || "";
+      inputTitle.addEventListener("change", () => { pushHistory(); v.title = inputTitle.value; saveState(); });
+      tdTitle.appendChild(inputTitle);
+
+      const tdSubj = document.createElement("td");
+      const inputSubj = document.createElement("input");
+      inputSubj.type = "text"; inputSubj.value = v.subject || "";
+      inputSubj.addEventListener("change", () => { pushHistory(); v.subject = inputSubj.value; saveState(); });
+      tdSubj.appendChild(inputSubj);
+
+      const tdTopic = document.createElement("td");
+      const inputTopic = document.createElement("input");
+      inputTopic.type = "text"; inputTopic.value = v.topic || "";
+      inputTopic.addEventListener("change", () => { pushHistory(); v.topic = inputTopic.value; saveState(); });
+      tdTopic.appendChild(inputTopic);
+
+      const tdRem = document.createElement("td");
+      // Display Raw Minutes instead of 0
+      const dispMin = v.rawMinutes || 45; 
+      tdRem.innerHTML = `<span class="text-xs text-muted">${dispMin} dk</span>`;
+
+      const tdLink = document.createElement("td");
+      const inputLink = document.createElement("input");
+      inputLink.type="text"; inputLink.value = v.link||"";
+      inputLink.placeholder = "Link";
+      inputLink.addEventListener("change",()=>{
+        pushHistory(); v.link = inputLink.value.trim(); saveState();
+      });
+      tdLink.appendChild(inputLink);
+
+      const tdStatus = document.createElement("td");
+      const btnUndoDone = document.createElement("button");
+      btnUndoDone.textContent = "Geri Al";
+      btnUndoDone.className = "btn-ghost";
+      btnUndoDone.style.fontSize="0.7rem";
+      btnUndoDone.style.marginLeft="0.5rem";
+      btnUndoDone.addEventListener("click", () => {
+          pushHistory();
+          v.done = false;
+          v.remainingMinutes = v.rawMinutes || 45; // Default reset
+          saveState();
+          regeneratePlan(profile);
+          renderVideos();
+          renderProfileSelector();
+          renderCompletionEstimates();
+      });
+      tdStatus.appendChild(btnUndoDone);
+
+      tr.append(tdIdx, tdTitle, tdSubj, tdTopic, tdRem, tdLink, tdStatus);
+      completedBody.appendChild(tr);
+    });
+
+    const videoSummary = document.getElementById("videoSummary");
+    const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
+    videoSummary.textContent =
+      `${activeVideos.length} aktif, ${completedVideos.length} biten video · ${remainingReal} dk kalan iş yükü`;
+  }
+
+  function addVideoFromInputs() {
+    pushHistory();
+    const profile = getActiveProfile();
+    const title = document.getElementById("inputVideoTitle").value.trim();
+    const subject = document.getElementById("inputVideoSubject").value.trim();
+    const topic = document.getElementById("inputVideoTopic").value.trim();
+    const minutes = parseInt(document.getElementById("inputVideoMinutes").value,10);
+    const speed = parseFloat(document.getElementById("inputVideoSpeed").value || "1");
+    const link = document.getElementById("inputVideoLink").value.trim();
+    if (!title || !minutes || minutes<=0) {
+      alert("Başlık ve kalan süre (dakika) zorunludur."); return;
+    }
+    const maxOrder = profile.videos.reduce((m,v)=>Math.max(m,v.order||0),0);
+    profile.videos.push({
+      id: uuid(),
+      title, subject, topic,
+      remainingMinutes: minutes,
+      speed, link,
+      done:false,
+      order:maxOrder+1,
+      priorityBoost:0,
+      rawMinutes:minutes
+    });
+    // Formu temizle
+    document.getElementById("inputVideoTitle").value = "";
+    document.getElementById("inputVideoLink").value = "";
+    
+    saveState();
+    renderProfileSelector(); renderFilters(); renderVideos();
+    regeneratePlan(profile); renderDailyPlan(); renderStats(); renderCompletionEstimates();
+  }
+
+  function clearAllVideos() {
+    const profile = getActiveProfile();
+    if (!profile.videos.length) return;
+    if (!confirm("Tüm videolar silinsin mi?")) return;
+    pushHistory();
+    profile.videos=[]; profile.plan={}; profile.dayMeta={};
+    profile.stats={perDay:{}}; profile.currentPlanStart=null;
+    saveState();
+    renderAll();
+  }
+
+  function exportCsv() {
+    const profile = getActiveProfile();
+    const header = ["Index","Başlık","Ders","Konu","Hız","Kalan1xDakika","Link","Bitti"];
+    const rows=[header];
+    const videos=[...profile.videos].sort((a,b)=>(a.order||0)-(b.order||0));
+    videos.forEach((v,idx)=>{
+      rows.push([
+        idx+1,
+        (v.title||"").replace(/"/g,'""'),
+        (v.subject||"").replace(/"/g,'""'),
+        (v.topic||"").replace(/"/g,'""'),
+        v.speed||1,
+        v.remainingMinutes||0,
+        (v.link||"").replace(/"/g,'""'),
+        v.done?1:0
+      ]);
+    });
+    const csv = rows.map(r=>r.map(v=>`"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;
+    a.download=`${profile.name.replace(/\s+/g,"_")}_videolar.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // --- CSV IMPORT ---
+  function parseCsvLine(text) {
+    const re = /(?!\s*$)\s*(?:'([^']*)'|"([^"]*)"|([^,'"]*))\s*(?:,|$)/g;
+    const a = [];
+    text.replace(re, function(m0, m1, m2, m3) {
+      if (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+      else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+      else if (m3 !== undefined) a.push(m3);
+      return '';
+    });
+    if (/,\s*$/.test(text)) a.push('');
+    return a;
+  }
+  function parseDurationStr(str) {
+    if (!str) return 0;
+    str = str.trim();
+    if (/^\d+$/.test(str)) return parseInt(str, 10);
+    let h = 0, m = 0, s = 0;
+    const hMatch = str.match(/(\d+)\s*h/i);
+    const mMatch = str.match(/(\d+)\s*m/i);
+    const sMatch = str.match(/(\d+)\s*s/i);
+    if (hMatch) h = parseInt(hMatch[1], 10);
+    if (mMatch) m = parseInt(mMatch[1], 10);
+    if (sMatch) s = parseInt(sMatch[1], 10);
+    if (!hMatch && !mMatch && !sMatch && str.includes(":")) {
+        const parts = str.split(":").map(p=>parseInt(p,10));
+        if (parts.length===3) { h=parts[0]; m=parts[1]; s=parts[2]; }
+        else if (parts.length===2) { m=parts[0]; s=parts[1]; }
+    }
+    const total = h * 60 + m + (s / 60);
+    return Math.ceil(total) || 0;
+  }
+
+  function importCsvVideos(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        pushHistory();
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/);
+        const profile = getActiveProfile();
+        let addedCount = 0;
+        let maxOrder = profile.videos.reduce((m,v)=>Math.max(m,v.order||0),0);
+        let formatMode = "std"; 
+        
+        if (lines.length > 0) {
+            const firstLine = lines[0].toLowerCase();
+            if (firstLine.includes("url") && firstLine.includes("title") && firstLine.includes("duration")) {
+                formatMode = "playlist";
+            }
+        }
+        lines.forEach((line, idx) => {
+          line = line.trim();
+          if(!line) return;
+          const lower = line.toLowerCase();
+          if (idx===0 && (lower.includes("başlık") || lower.includes("title") || lower.includes("url"))) return;
+
+          const cols = parseCsvLine(line);
+          let title="", subject="", topic="", speed=1, minutes=0, link="";
+          
+          if (formatMode === "playlist") {
+              if (cols.length >= 4) {
+                  link = cols[1];
+                  title = cols[2];
+                  minutes = parseDurationStr(cols[3]);
+              }
+          } else {
+              if (cols.length >= 6) {
+                 title = cols[1];
+                 subject = cols[2];
+                 topic = cols[3];
+                 speed = parseFloat(cols[4]) || 1;
+                 minutes = parseInt(cols[5], 10);
+                 link = cols[6];
+              } else if (cols.length >= 2) {
+                 title = cols[0];
+                 minutes = parseDurationStr(cols[1]);
+              }
+          }
+
+          if (title && minutes > 0) {
+             profile.videos.push({
+               id: uuid(),
+               title: title.trim(),
+               subject: (subject || "").trim(),
+               topic: (topic || "").trim(),
+               remainingMinutes: minutes,
+               speed: speed || 1,
+               link: (link || "").trim(),
+               done: false,
+               order: ++maxOrder,
+               priorityBoost: 0,
+               rawMinutes: minutes
+             });
+             addedCount++;
+          }
+        });
+        
+        saveState();
+        renderProfileSelector(); renderVideos();
+        regeneratePlan(profile); renderStats(); renderCompletionEstimates();
+        alert(addedCount + " adet video başarıyla eklendi.");
+        document.getElementById('csvVideoInput').value = "";
+      } catch (err) {
+        console.error(err);
+        alert("CSV okuma hatası: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // --- SETTINGS & PLAN ---
+  function renderSettings() {
+    const profile = getActiveProfile();
+    document.getElementById("inputStartDate").value = profile.settings.startDate || "";
+    document.getElementById("inputOffDates").value = offDatesToString(profile.settings.offDates || []);
+    const dm = profile.settings.dailyMinutes || defaultDailyMinutes;
+    document.getElementById("mins-mon").value = dm.mon || 0;
+    document.getElementById("mins-tue").value = dm.tue || 0;
+    document.getElementById("mins-wed").value = dm.wed || 0;
+    document.getElementById("mins-thu").value = dm.thu || 0;
+    document.getElementById("mins-fri").value = dm.fri || 0;
+    document.getElementById("mins-sat").value = dm.sat || 0;
+    document.getElementById("mins-sun").value = dm.sun || 0;
+  }
+  function saveSettingsFromInputs() {
+    pushHistory();
+    const profile = getActiveProfile();
+    
+    // Otomatik bugün güncellemesi
+    const today = todayStr();
+    const offDates = parseOffDates(document.getElementById("inputOffDates").value);
+    const dm = {
+      mon: parseInt(document.getElementById("mins-mon").value,10) || 0,
+      tue: parseInt(document.getElementById("mins-tue").value,10) || 0,
+      wed: parseInt(document.getElementById("mins-wed").value,10) || 0,
+      thu: parseInt(document.getElementById("mins-thu").value,10) || 0,
+      fri: parseInt(document.getElementById("mins-fri").value,10) || 0,
+      sat: parseInt(document.getElementById("mins-sat").value,10) || 0,
+      sun: parseInt(document.getElementById("mins-sun").value,10) || 0
+    };
+    
+    let pickedStart = document.getElementById("inputStartDate").value || today;
+    if (pickedStart < today) pickedStart = today;
+
+    profile.settings.startDate = pickedStart;
+    profile.settings.offDates = offDates;
+    profile.settings.dailyMinutes = dm;
+    
+    saveState(); renderSettings(); renderStats(); renderCalendar(); renderDailyPlan();
+  }
+
+  // **REGENERATE PLAN WITH FREEZE LOGIC**
+  function regeneratePlan(profile, keepDays = []) {
+    const startDate = profile.settings.startDate || todayStr();
+    const offDates = profile.settings.offDates || [];
+    
+    // 1. All active videos
+    const allActiveVideos = profile.videos.filter(v=>!v.done && (v.remainingMinutes||0)>0);
+    
+    if (!allActiveVideos.length) {
+      profile.plan = {};
+      profile.currentPlanStart=null; saveState();
+      dailyCheckedIds=[]; currentCheckedDate=null;
+      renderDailyPlan(); renderCalendar(); renderCompletionEstimates(); return;
+    }
+
+    // 2. Exclude videos already in frozen days (keepDays)
+    let allocatedIds = [];
+    keepDays.forEach(d => {
+        if (profile.plan[d] && profile.plan[d].videoIds) {
+            allocatedIds = allocatedIds.concat(profile.plan[d].videoIds);
+        }
+    });
+    
+    let queue = allActiveVideos.filter(v => !allocatedIds.includes(v.id));
+
+    queue.sort((a,b)=>{
+      const pa=a.priorityBoost||0, pb=b.priorityBoost||0;
+      if (pa!==pb) return pb-pa;
+      return (a.order||0)-(b.order||0);
+    });
+
+    // 3. Build new plan, preserving frozen days
+    const newPlan = {};
+    keepDays.forEach(d => {
+        if (profile.plan[d]) newPlan[d] = profile.plan[d];
+    });
+
+    let currentDate=startDate;
+    let days=0;
+    
+    while(queue.length && days<365){
+      const dateStr=currentDate;
+      
+      // Skip if this day is frozen
+      if (keepDays.includes(dateStr)) {
+          currentDate=addDays(currentDate,1); 
+          days++;
+          continue;
+      }
+
+      const isOff = offDates.includes(dateStr);
+      const capacity = isOff ? 0 : getDailyMinutesForDay(profile,dateStr);
+      
+      if (capacity>0){
+        let remainingCap=capacity;
+        const todaysVideos=[];
+        for (let i=0;i<queue.length;){
+          const v=queue[i];
+          const dur=effectiveRemainingMinutes(v);
+          if (dur<=0){ queue.splice(i,1); continue; }
+          if (dur<=remainingCap){
+            todaysVideos.push(v.id);
+            remainingCap-=dur; queue.splice(i,1);
+          } else break;
+        }
+        if (todaysVideos.length) newPlan[dateStr]={videoIds:todaysVideos};
+      }
+      currentDate=addDays(currentDate,1); days++;
+    }
+    
+    profile.plan = newPlan;
+    const dates=Object.keys(newPlan).sort();
+    profile.currentPlanStart = dates[0] || null;
+    
+    saveState(); dailyCheckedIds=[]; currentCheckedDate=null;
+    renderDailyPlan(); renderCalendar(); renderCompletionEstimates();
+    renderProfileSelector(); // BUG FIX 2: Added to update header summary
+  }
+
+  function renderCompletionEstimates() {
+    const profile = getActiveProfile();
+
+    // Günlük plan için elemanlar
+    const barDaily = document.getElementById("dailyEstimationBar");
+    const valDaily = document.getElementById("estValueText");
+    const detDaily = document.getElementById("estDetailText");
+
+    // Takvim için elemanlar
+    const barCal = document.getElementById("calendarEstimationBar");
+    const valCal = document.getElementById("calEstValueText");
+    const detCal = document.getElementById("calEstDetailText");
+
+    const activeVideos = profile.videos.filter(
+        v => !v.done && (v.remainingMinutes || 0) > 0
+    );
+    const hasVideos = activeVideos.length > 0;
+
+    // Barları göster/gizle
+    if (barDaily) barDaily.style.display = hasVideos ? "flex" : "none";
+    if (barCal)   barCal.style.display   = hasVideos ? "flex" : "none";
+
+    if (!hasVideos) {
+        if (valDaily) valDaily.textContent = "Tamamlandı";
+        if (detDaily) detDaily.textContent = "Planlanmış tüm videolar bitti.";
+        if (valCal)   valCal.textContent   = "Tamamlandı";
+        if (detCal)   detCal.textContent   = "Planlanmış tüm videolar bitti.";
+        return;
+    }
+
+    const plan = profile.plan || {};
+    const planDates = Object.keys(plan).filter(d => {
+        const day = plan[d];
+        return day && Array.isArray(day.videoIds) && day.videoIds.length > 0;
+    });
+
+    let endDate = null;
+
+    if (planDates.length > 0) {
+        // Mevcut planın son günü = tahmini bitiş
+        planDates.sort();
+        endDate = planDates[planDates.length - 1];
+    } else {
+        // Plan yoksa: kabaca tahmin yapmak için küçük bir simülasyon
+        const offDates = profile.settings.offDates || [];
+
+        const getCapacity = (dateStr) => {
+            if (offDates.includes(dateStr)) return 0;
+            return getDailyMinutesForDay(profile, dateStr);
+        };
+
+        let queue = activeVideos.map(v => ({
+            remaining: v.remainingMinutes || 0,
+            speed: v.speed && v.speed > 0 ? v.speed : 1
+        }));
+
+        let currentDate = profile.settings.startDate || todayStr();
+        let safety = 0;
+
+        while (queue.length && safety < 2000) {
+            let cap = getCapacity(currentDate);
+
+            if (cap > 0) {
+                let i = 0;
+                while (i < queue.length && cap > 0) {
+                    const item = queue[i];
+                    let dur = Math.ceil(item.remaining / item.speed);
+
+                    if (dur <= 0) {
+                        queue.splice(i, 1);
+                        continue;
+                    }
+
+                    if (dur <= cap) {
+                        // Video bu güne tamamen sığıyor
+                        cap -= dur;
+                        queue.splice(i, 1);
+                    } else {
+                        // Sığmıyorsa kalan kapasite kadarını izlenmiş varsay
+                        const watchedRealMinutes = cap * item.speed;
+                        item.remaining = Math.max(0, item.remaining - watchedRealMinutes);
+                        cap = 0;
+                        if (item.remaining <= 0) {
+                            queue.splice(i, 1);
+                        } else {
+                            i++;
+                        }
+                    }
+                }
+            }
+
+            if (!queue.length) break;
+            currentDate = addDays(currentDate, 1);
+            safety++;
+        }
+
+        endDate = currentDate;
+    }
+
+    const formatDateTR = (ds) => {
+        if (!ds) return "-";
+        const [y, m, d] = ds.split("-");
+        return `${d}/${m}/${y}`;
+    };
+
+    const textValue  = `~ ${formatDateTR(endDate)}`;
+    const textDetail = "Kalan videolar mevcut plana göre yaklaşık bu tarihte biter.";
+
+    if (valDaily) valDaily.textContent = textValue;
+    if (detDaily) detDaily.textContent = textDetail;
+
+    if (valCal) valCal.textContent = textValue;
+    if (detCal) detCal.textContent = textDetail;
+}
+
+
+  // --- DAILY PLAN ---
+  function saveCurrentDayMetaInputs(profile, currentDate) {
+    const container = document.getElementById("dailyPlanContent");
+    if (!container) return profile.dayMeta[currentDate] || {};
+
+    const generalNoteEl = container.querySelector("#dayGeneralNoteInput");
+    const generalNote = generalNoteEl ? generalNoteEl.value : "";
+    
+    // Mevcut metayı al
+    const meta = profile.dayMeta[currentDate] || {};
+    
+    // Per Subject verilerini güncelle (Diğer arrayleri bozmadan)
+    const perSubject = meta.perSubject || {};
+    let totalCorrect = 0, totalWrong = 0;
+
+    container.querySelectorAll(".per-subject-row").forEach(row => {
+      const subj = row.dataset.subject || "";
+      if (!subj) return;
+      const noteEl = row.querySelector(".sub-note-input");
+      const corrEl = row.querySelector(".sub-correct-input");
+      const wrongEl = row.querySelector(".sub-wrong-input");
+      
+      const note = noteEl ? noteEl.value : "";
+      const correct = corrEl ? (parseInt(corrEl.value, 10) || 0) : 0;
+      const wrong = wrongEl ? (parseInt(wrongEl.value, 10) || 0) : 0;
+      
+      totalCorrect += correct; 
+      totalWrong += wrong;
+      
+      perSubject[subj] = { note, correct, wrong };
+    });
+
+    meta.generalNote = generalNote;
+    meta.note = generalNote;
+    meta.perSubject = perSubject;
+    meta.totalCorrect = totalCorrect;
+    meta.totalWrong = totalWrong;
+    meta.totalQuestions = totalCorrect + totalWrong;
+    meta.questions = meta.totalQuestions;
+
+    profile.dayMeta[currentDate] = meta;
+    return meta;
+  }
+
+  function deferVideo(videoId) {
+    const profile = getActiveProfile();
+    const planDates = Object.keys(profile.plan || {}).sort();
+    const currentDate = profile.currentPlanStart || planDates[0];
+    if (!currentDate || !profile.plan[currentDate]) return;
+
+    if (!confirm("Bu videoyu bugünün planından çıkarıp havuza geri göndermek istiyor musun?")) return;
+
+    pushHistory();
+    
+    // Remove ONLY the target video
+    profile.plan[currentDate].videoIds = profile.plan[currentDate].videoIds.filter(id => id !== videoId);
+    
+    saveState();
+    
+    // FREEZE today's remaining plan, regenerate future
+    regeneratePlan(profile, [currentDate]);
+    
+    renderDailyPlan();
+    renderCalendar();
+  }
+
+  function renderDailyPlan() {
+    const profile = getActiveProfile();
+    const container = document.getElementById("dailyPlanContent");
+    const headerInfo = document.getElementById("dailyPlanHeaderInfo");
+    const otherDaysContainer = document.getElementById("otherDaysContent");
+    
+    const startStr = profile.settings.startDate || todayStr();
+    const today = todayStr();
+    const waitScreen = document.getElementById("waitingForStart");
+    const mainView = document.getElementById("dailyPlanMainView");
+    
+    const dailyMins = getDailyMinutesForDay(profile, today);
+    const isOffDay = (profile.settings.offDates || []).includes(today);
+    const isTodayRest = (dailyMins === 0 || isOffDay);
+
+    const planDates = Object.keys(profile.plan || {}).sort();
+    const effectiveStart = profile.currentPlanStart || planDates[0];
+    const isBehindSchedule = effectiveStart && effectiveStart < today;
+
+    const shouldShowWait = !skipWaitMode && (
+        (startStr > today) || 
+        (isTodayRest && !isBehindSchedule)
+    );
+
+    if (shouldShowWait) {
+        waitScreen.style.display = "block";
+        mainView.style.display = "none";
+        
+        const waitTitle = document.getElementById("waitingTitle");
+        const waitDateDisplay = document.getElementById("waitingDateDisplay");
+        const waitTodayDisplay = document.getElementById("waitingTodayDisplay");
+        const waitDesc = document.getElementById("waitingDesc");
+        const waitDateLabel = document.getElementById("waitingDateLabel");
+
+        waitTodayDisplay.textContent = formatDate(today);
+
+        if (startStr > today) {
+             waitTitle.textContent = "⏳ Plan Başlangıcı Bekleniyor";
+             waitDateLabel.textContent = "Seçili profil için plan başlangıç tarihi:";
+             waitDateDisplay.textContent = formatDate(startStr);
+             waitDesc.innerHTML = `Bugün (<span id="waitingTodayDisplay">${formatDate(today)}</span>) henüz çalışma günü değil. O gün gelene kadar dinlen!`;
+        } else {
+             waitTitle.textContent = "☕ Bugün Dinlenme Günü";
+             waitDateLabel.textContent = "Bir sonraki çalışma günün:";
+             waitDateDisplay.textContent = (effectiveStart ? formatDate(effectiveStart) : "Planlanmış iş yok");
+             waitDesc.innerHTML = `Bugün (<span id="waitingTodayDisplay">${formatDate(today)}</span>) senin için dinlenme/tatil günü.<br>İyi dinlen, bir sonraki çalışma gününde tam gaz devam edersin!`;
+        }
+        return;
+    } else {
+        waitScreen.style.display = "none";
+        mainView.style.display = "block";
+    }
+
+    const currentDate = effectiveStart || null;
+    
+    if (!currentDate) {
+      container.innerHTML='<div class="alert">Bu profil için henüz bir plan yok. Genel Ayarlar sekmesinden plan oluşturabilirsin.</div>';
+      headerInfo.textContent="Plan Yok"; otherDaysContainer.innerHTML='<div class="text-sm text-muted">Planlı başka gün yok.</div>';
+      dailyCheckedIds=[]; currentCheckedDate=null; return;
+    }
+    
+    if (currentCheckedDate!==currentDate) {
+      dailyCheckedIds=[]; currentCheckedDate=currentDate;
+    }
+
+    const todayLabel = formatDate(currentDate);
+    headerInfo.textContent = todayLabel;
+
+    const currentEntry = profile.plan[currentDate];
+    const videoIds = currentEntry ? currentEntry.videoIds || [] : [];
+    const videosMap={}; profile.videos.forEach(v=>{videosMap[v.id]=v;});
+    
+    const rawMeta = profile.dayMeta[currentDate] || {};
+    const generalNote = rawMeta.generalNote != null ? rawMeta.generalNote : (rawMeta.note || "");
+    const perSubjectMeta = rawMeta.perSubject || {};
+    const extraStudy = rawMeta.extraStudySessions || [];
+    const extraTests = rawMeta.extraTests || [];
+
+    let totalDayMinutes=0;
+    const rowsHtml = videoIds.map(id=>{
+      const v=videosMap[id]; if (!v) return "";
+      const durPlan=effectiveRemainingMinutes(v);
+      totalDayMinutes+=durPlan;
+      const speedVal=v.speed||1;
+      const checkedAttr=dailyCheckedIds.includes(v.id)?"checked":"";
+      
+      return `
+        <tr>
+          <td><input type="checkbox" class="day-video-checkbox" data-video-id="${v.id}" ${checkedAttr}></td>
+          <td>
+            ${v.link?`<a href="${v.link}" target="_blank" class="link">${v.title||"(başlıksız)"}</a>`:(v.title||"(başlıksız)")}
+            <div class="chip-row">
+              ${v.subject?`<span class="pill-small">${v.subject}</span>`:""}
+              ${v.topic?`<span class="pill-small">${v.topic}</span>`:""}
+            </div>
+          </td>
+          <td>${durPlan}</td>
+          <td style="min-width:100px;">
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+                <select class="day-video-speed-select" data-video-id="${v.id}" style="width:60px; padding:0.2rem;">
+                  <option value="1"${speedVal===1?" selected":""}>1x</option>
+                  <option value="1.25"${speedVal===1.25?" selected":""}>1.25</option>
+                  <option value="1.5"${speedVal===1.5?" selected":""}>1.5</option>
+                  <option value="1.75"${speedVal===1.75?" selected":""}>1.75</option>
+                  <option value="2"${speedVal===2?" selected":""}>2x</option>
+                </select>
+                <button class="btn-ghost btn-defer-video" data-video-id="${v.id}" title="Geri Gönder / Vazgeç" style="padding:0.2rem 0.4rem;">↪</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+
+    const subjectSet=new Set();
+    videoIds.forEach(id=>{
+      const v=videosMap[id]; if (v && v.subject) subjectSet.add(v.subject);
+    });
+    const subjectList=Array.from(subjectSet).sort();
+    const subjectRowsHtml = subjectList.length
+      ? subjectList.map(subj=>{
+          const subMeta = perSubjectMeta[subj] || {};
+          const corr=subMeta.correct||0, wrong=subMeta.wrong||0;
+          const escSubj=subj.replace(/"/g,"&quot;");
+          const escNote=(subMeta.note||"").replace(/"/g,"&quot;");
+          return `
+            <tr class="per-subject-row" data-subject="${escSubj}">
+              <td>${subj}</td>
+              <td><input type="text" class="sub-note-input medium-input" value="${escNote}" placeholder="Ders notu..."></td>
+              <td><input type="number" min="0" class="sub-correct-input small-input" value="${corr}"></td>
+              <td><input type="number" min="0" class="sub-wrong-input small-input" value="${wrong}"></td>
+            </tr>`;
+        }).join("")
+      : `<tr><td colspan="4" class="text-xs text-muted">Bu güne ait ders bulunamadı.</td></tr>`;
+
+    const extraStudyList = extraStudy.length
+      ? extraStudy.map((s,i)=>
+          `<div class="text-xs" style="margin-bottom:4px; padding:4px; border:1px solid var(--border); border-radius:4px;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${s.subject||"-"}</strong>
+                <span>${s.minutes||0} dk</span>
+            </div>
+            ${s.topic ? `<div>Konu: ${s.topic}</div>` : ''}
+            ${s.note ? `<div style="color:var(--text-muted); font-style:italic;">Not: ${s.note}</div>` : ''}
+            <button type="button" class="btn-ghost btn-extra-study-del" data-index="${i}" style="padding:0 0.3rem; font-size:0.7rem; margin-top:2px;">Sil</button>
+          </div>`).join("")
+      : `<div class="text-xs text-muted">Plan dışı ders kaydı yok.</div>`;
+
+    const extraTestsList = extraTests.length
+      ? extraTests.map((t,i)=>
+          `<div class="text-xs" style="margin-bottom:4px; padding:4px; border:1px solid var(--border); border-radius:4px;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${t.subject||"-"}</strong>
+                <span>D:${t.correct||0} Y:${t.wrong||0}</span>
+            </div>
+            ${t.note ? `<div style="color:var(--text-muted); font-style:italic;">Not: ${t.note}</div>` : ''}
+            <button type="button" class="btn-ghost btn-extra-test-del" data-index="${i}" style="padding:0 0.3rem; font-size:0.7rem; margin-top:2px;">Sil</button>
+          </div>`).join("")
+      : `<div class="text-xs text-muted">Plan dışı test kaydı yok.</div>`;
+
+    container.innerHTML = `
+      <div class="flex-between mb-1">
+        <div>
+           <div class="text-xs text-muted"><strong>Planlanan Süre:</strong> ${totalDayMinutes} dk</div>
+        </div>
+        <div>
+           <button type="button" class="btn-ghost text-xs" id="btnCheckAllDay">Tümünü Seç</button>
+           <button type="button" class="btn-ghost text-xs" id="btnUncheckAllDay">Kaldır</button>
+        </div>
+      </div>
+      <div class="progress-wrap mb-1">
+        <div class="progress-bar" id="dailyProgressBar" style="width:0%;"></div>
+      </div>
+      
+      <div class="row">
+        <div class="col" style="flex:1.5;">
+          <div class="table-container" style="max-height:450px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">Tamam</th>
+                  <th>Video</th>
+                  <th style="width:60px;">Süre</th>
+                  <th style="width:100px;">İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="4" class="text-sm text-muted">Bu güne atanmış video yok.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col" style="flex:1;">
+          <div class="field-group">
+            <div class="field-label">Genel Not</div>
+            <textarea id="dayGeneralNoteInput" rows="2" placeholder="Bugün nasıl geçti?">${generalNote}</textarea>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Ders Notları & Sorular</div>
+            <div class="table-container" style="max-height:160px;">
+              <table>
+                <thead><tr><th>Ders</th><th>Not</th><th>D</th><th>Y</th></tr></thead>
+                <tbody>${subjectRowsHtml}</tbody>
+              </table>
+            </div>
+            <div class="text-xs text-muted mt-1" id="dayQuestionSummary">
+              Toplam: 0 (D: 0, Y: 0)
+            </div>
+          </div>
+          
+          <div style="background:var(--bg); padding:0.75rem; border-radius:var(--radius-md); border:1px solid var(--border); margin-bottom:1rem;">
+             <div class="field-label" style="margin-bottom:0.5rem;">Ekstra Çalışmalar</div>
+             
+             <!-- Extra Study Input -->
+             <div style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.5rem;">
+                <div class="row" style="gap:0.25rem;">
+                    <input type="text" id="extraStudySubject" placeholder="Ders" style="font-size:0.8rem">
+                    <input type="number" id="extraStudyMinutes" placeholder="Dk" class="small-input" style="font-size:0.8rem;">
+                </div>
+                <div class="row" style="gap:0.25rem;">
+                    <input type="text" id="extraStudyTopic" placeholder="Konu (Opsiyonel)" style="font-size:0.8rem">
+                    <input type="text" id="extraStudyNote" placeholder="Not (Opsiyonel)" style="font-size:0.8rem">
+                    <button type="button" class="btn-ghost" id="btnAddExtraStudy" style="padding:0.2rem 0.5rem;">+</button>
+                </div>
+             </div>
+             <div class="mt-1" id="extraStudyList">${extraStudyList}</div>
+             
+             <div style="height:1px; background:var(--border); margin:0.5rem 0;"></div>
+             
+             <!-- Extra Test Input -->
+             <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                 <div class="row" style="gap:0.25rem;">
+                    <input type="text" id="extraTestSubject" placeholder="Test Dersi" style="font-size:0.8rem">
+                    <input type="number" id="extraTestCorrect" placeholder="D" class="small-input" style="font-size:0.8rem;">
+                    <input type="number" id="extraTestWrong" placeholder="Y" class="small-input" style="font-size:0.8rem;">
+                 </div>
+                 <div class="row" style="gap:0.25rem;">
+                    <input type="text" id="extraTestNote" placeholder="Test Notu (Opsiyonel)" style="font-size:0.8rem; width:100%;">
+                    <button type="button" class="btn-ghost" id="btnAddExtraTest" style="padding:0.2rem 0.5rem;">+</button>
+                 </div>
+             </div>
+             <div class="mt-1" id="extraTestList">${extraTestsList}</div>
+          </div>
+
+          <button id="btnCompleteDay" style="width:100%;">Günü Tamamla</button>
+        </div>
+      </div>`;
+
+    // Event Listeners
+    container.querySelectorAll(".btn-defer-video").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const vid = e.target.dataset.videoId;
+            deferVideo(vid);
+        });
+    });
+
+    const dayCheckboxes = container.querySelectorAll(".day-video-checkbox");
+    const progressBar = document.getElementById("dailyProgressBar");
+    function recalcProgress() {
+      const checkedMinutes = Array.from(dayCheckboxes).reduce((sum,el)=>{
+        if (!el.checked) return sum;
+        const v=videosMap[el.dataset.videoId];
+        return sum + (v ? effectiveRemainingMinutes(v) : 0);
+      },0);
+      const pct = totalDayMinutes===0 ? 0 : Math.round((checkedMinutes/totalDayMinutes)*100);
+      if (progressBar) progressBar.style.width=pct+"%";
+    }
+    dayCheckboxes.forEach(cb=>{
+      cb.addEventListener("change",()=>{
+        const id=cb.dataset.videoId;
+        if (cb.checked) {
+          if (!dailyCheckedIds.includes(id)) dailyCheckedIds.push(id);
+        } else {
+          dailyCheckedIds = dailyCheckedIds.filter(x=>x!==id);
+        }
+        recalcProgress();
+      });
+    });
+
+    const btnCheckAll = document.getElementById("btnCheckAllDay");
+    if (btnCheckAll) {
+      btnCheckAll.addEventListener("click",()=>{
+        dayCheckboxes.forEach(cb=>{cb.checked=true;});
+        dailyCheckedIds = videoIds.slice();
+        if (progressBar) progressBar.style.width = totalDayMinutes===0 ? "0%" : "100%";
+      });
+    }
+    const btnUncheckAll = document.getElementById("btnUncheckAllDay");
+    if (btnUncheckAll) {
+      btnUncheckAll.addEventListener("click",()=>{
+        dayCheckboxes.forEach(cb=>{cb.checked=false;});
+        dailyCheckedIds=[]; if (progressBar) progressBar.style.width="0%";
+      });
+    }
+    
+    // Auto Save Listeners for Inputs (Bug fix for data loss)
+    const autoSaveInputs = () => {
+        const p = getActiveProfile();
+        saveCurrentDayMetaInputs(p, currentDate);
+        saveState(true); // Persist without history spam
+    };
+    
+    container.querySelectorAll("input, textarea").forEach(el => {
+        // Skip checkboxes and add buttons
+        if (el.type === 'checkbox' || el.type === 'button' || el.id.includes('extraStudy') || el.id.includes('extraTest')) return;
+        el.addEventListener("change", autoSaveInputs);
+        el.addEventListener("blur", autoSaveInputs);
+    });
+
+    const updateQs = () => {
+         const rows = container.querySelectorAll(".per-subject-row");
+         let tc=0, tw=0;
+         rows.forEach(r => {
+             tc += parseInt(r.querySelector(".sub-correct-input").value||0, 10);
+             tw += parseInt(r.querySelector(".sub-wrong-input").value||0, 10);
+         });
+         document.getElementById("dayQuestionSummary").textContent = `Toplam: ${tc+tw} (D: ${tc}, Y: ${tw})`;
+    };
+    container.querySelectorAll(".sub-correct-input, .sub-wrong-input").forEach(inp => inp.addEventListener("input", updateQs));
+    updateQs();
+
+    document.getElementById("btnCompleteDay").addEventListener("click",()=>completeCurrentDay());
+    setupExtraStudyEvents(container, currentDate);
+    renderOtherDays(profile, currentDate, otherDaysContainer, videosMap);
+  }
+
+  function setupExtraStudyEvents(container, currentDate) {
+      const btnAddExtraStudy = document.getElementById("btnAddExtraStudy");
+      if (btnAddExtraStudy) {
+        btnAddExtraStudy.addEventListener("click",()=>{
+          pushHistory();
+          // Critical: Save existing inputs first so they aren't lost
+          const p=getActiveProfile();
+          saveCurrentDayMetaInputs(p, currentDate); 
+
+          const subj=document.getElementById("extraStudySubject").value.trim();
+          const mins=parseInt(document.getElementById("extraStudyMinutes").value,10);
+          const topic=document.getElementById("extraStudyTopic").value.trim();
+          const note=document.getElementById("extraStudyNote").value.trim();
+
+          if (!subj || !mins || mins<=0) { alert("Ders ve dakika zorunludur."); return; }
+          
+          const meta=p.dayMeta[currentDate] || {};
+          meta.extraStudySessions = meta.extraStudySessions || [];
+          meta.extraStudySessions.push({subject:subj, topic:topic, minutes:mins, note:note});
+          p.dayMeta[currentDate]=meta;
+          
+          saveState(); 
+          renderDailyPlan(); 
+          renderStats(); 
+          renderCompletionEstimates();
+        });
+      }
+      container.querySelectorAll(".btn-extra-study-del").forEach(btn=>{
+          btn.addEventListener("click",()=>{
+             pushHistory();
+             const idx=parseInt(btn.dataset.index,10);
+             const p=getActiveProfile();
+             saveCurrentDayMetaInputs(p,currentDate); // Save before delete
+             const meta=p.dayMeta[currentDate] || {};
+             if (meta.extraStudySessions) {
+                 meta.extraStudySessions.splice(idx,1);
+                 p.dayMeta[currentDate]=meta; saveState(); renderDailyPlan(); renderStats(); renderCompletionEstimates();
+             }
+          });
+      });
+
+      const btnAddExtraTest = document.getElementById("btnAddExtraTest");
+      if (btnAddExtraTest) {
+        btnAddExtraTest.addEventListener("click",()=>{
+          pushHistory();
+          // Critical: Save existing inputs first
+          const p=getActiveProfile();
+          saveCurrentDayMetaInputs(p, currentDate);
+
+          const subj=document.getElementById("extraTestSubject").value.trim();
+          const corr=parseInt(document.getElementById("extraTestCorrect").value,10)||0;
+          const wrong=parseInt(document.getElementById("extraTestWrong").value,10)||0;
+          const note=document.getElementById("extraTestNote").value.trim();
+
+          if (!subj) { alert("Ders adı zorunludur."); return; }
+          
+          const meta=p.dayMeta[currentDate] || {};
+          meta.extraTests = meta.extraTests || [];
+          meta.extraTests.push({subject:subj,correct:corr,wrong:wrong, note:note});
+          p.dayMeta[currentDate]=meta;
+          saveState(); renderDailyPlan(); renderStats();
+        });
+      }
+      container.querySelectorAll(".btn-extra-test-del").forEach(btn=>{
+          btn.addEventListener("click",()=>{
+             pushHistory();
+             const idx=parseInt(btn.dataset.index,10);
+             const p=getActiveProfile();
+             saveCurrentDayMetaInputs(p,currentDate); // Save before delete
+             const meta=p.dayMeta[currentDate] || {};
+             if (meta.extraTests) {
+                 meta.extraTests.splice(idx,1);
+                 p.dayMeta[currentDate]=meta; saveState(); renderDailyPlan(); renderStats();
+             }
+          });
+      });
+  }
+
+  function renderOtherDays(profile, currentDate, container, videosMap) {
+      const planDates = Object.keys(profile.plan || {}).sort();
+      const otherDates = planDates.filter(d=>d!==currentDate);
+      if (!otherDates.length) {
+        container.innerHTML='<div class="text-sm text-muted">Planlı başka gün yok.</div>';
+      } else {
+        const rows = otherDates.slice(0,30).map(dateStr=>{
+          const entry=profile.plan[dateStr];
+          const vids=(entry.videoIds||[]).map(id=>videosMap[id]).filter(Boolean);
+          const total=vids.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
+          const titles=vids.map(v=>v.title||"(başlıksız)");
+          const shortTitles=titles.slice(0,2).join(", ");
+          return `
+            <tr class="other-day-row" data-date="${dateStr}">
+              <td>${formatDate(dateStr)}</td>
+              <td>${total} dk</td>
+              <td>${vids.length}</td>
+              <td>${shortTitles || "Video yok"}</td>
+            </tr>`;
+        }).join("");
+        container.innerHTML = `
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>Tarih</th><th>Süre</th><th>Adet</th><th>Önizleme</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div id="otherDayDetailPanel" class="mt-2 text-sm text-muted"></div>
+        `;
+        container.querySelectorAll(".other-day-row").forEach(row=>{
+          row.addEventListener("click",()=>{
+            showOtherDayDetail(row.dataset.date);
+          });
+        });
+      }
+  }
+
+  function completeCurrentDay() {
+    pushHistory();
+    const profile = getActiveProfile();
+    const planDates = Object.keys(profile.plan || {}).sort();
+    const currentDate = profile.currentPlanStart || planDates[0] || null; // This is the PLAN date (potentially future)
+    if (!currentDate) return;
+
+    // Save inputs one last time
+    const generalMeta = saveCurrentDayMetaInputs(profile, currentDate) || {};
+    
+    // Determine the LOG date (System date, meaning TODAY)
+    const logDate = todayStr(); 
+
+    // Extract stats for stats engine
+    const entry = profile.plan[currentDate] || { videoIds: [] };
+    const container = document.getElementById("dailyPlanContent");
+    const checkboxes = container.querySelectorAll(".day-video-checkbox");
+    const checkedIds = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.dataset.videoId);
+    
+    // --- BUG FIX: MERGE PLAN DATA INTO TODAY'S STATS IF DATES DIFFER ---
+    // If user is working on tomorrow's plan (currentDate) today (logDate), move the dayMeta to logDate.
+    
+    if (currentDate !== logDate) {
+        // 1. Get meta from plan date
+        const planMeta = profile.dayMeta[currentDate] || {};
+        
+        // 2. Get existing meta for today (if any)
+        const logMeta = profile.dayMeta[logDate] || {};
+        
+        // 3. Merge General Notes
+        if (planMeta.generalNote) {
+            logMeta.generalNote = (logMeta.generalNote ? logMeta.generalNote + "\n" : "") + planMeta.generalNote;
+            logMeta.note = logMeta.generalNote;
+        }
+
+        // 4. Merge Per Subject Stats
+        logMeta.perSubject = logMeta.perSubject || {};
+        if (planMeta.perSubject) {
+            Object.keys(planMeta.perSubject).forEach(subj => {
+                const src = planMeta.perSubject[subj];
+                const dst = logMeta.perSubject[subj] || { note: "", correct: 0, wrong: 0 };
+                
+                if (src.note) dst.note = (dst.note ? dst.note + "; " : "") + src.note;
+                dst.correct += (src.correct || 0);
+                dst.wrong += (src.wrong || 0);
+                
+                logMeta.perSubject[subj] = dst;
+            });
+        }
+
+        // 5. Merge Extra Studies
+        if (planMeta.extraStudySessions) {
+            logMeta.extraStudySessions = logMeta.extraStudySessions || [];
+            logMeta.extraStudySessions.push(...planMeta.extraStudySessions);
+        }
+
+        // 6. Merge Extra Tests
+        if (planMeta.extraTests) {
+            logMeta.extraTests = logMeta.extraTests || [];
+            logMeta.extraTests.push(...planMeta.extraTests);
+        }
+
+        // 7. Update totals for Log Date
+        // Recalculate based on merged data
+        let tc = 0, tw = 0;
+        if(logMeta.perSubject) Object.values(logMeta.perSubject).forEach(d => { tc+=d.correct; tw+=d.wrong; });
+        if(logMeta.extraTests) logMeta.extraTests.forEach(t => { tc+=t.correct; tw+=t.wrong; });
+
+        logMeta.totalCorrect = tc;
+        logMeta.totalWrong = tw;
+        logMeta.totalQuestions = tc + tw;
+        logMeta.questions = tc + tw;
+
+        // Save merged meta to TODAY
+        profile.dayMeta[logDate] = logMeta;
+        
+        // Clear meta from FUTURE/PLAN date to avoid duplicates when that day actually comes
+        delete profile.dayMeta[currentDate];
+
+        // Also update `generalMeta` reference for the stats calculation below
+        // We use the accumulated data for today now
+    } 
+    // If dates are same, `saveCurrentDayMetaInputs` already saved to `profile.dayMeta[logDate]`.
+
+    // --- Stats Calculation (Video & Question Logic) ---
+    // We calculate what was done *in this session* and add it to the daily ledger (stats.perDay)
+    
+    // Calculate totals just for this session's inputs to add to stats ledger
+    // (Note: dayMeta stores the state of the notepad. stats.perDay stores historical accumulation)
+    
+    // Re-read from the meta we just saved/merged to ensure consistency? 
+    // No, simple additive approach for stats ledger is better.
+    // What we need is: What was NEWLY added?
+    // Since `completeCurrentDay` consumes the plan, we take everything currently in the fields.
+    
+    const sessionGeneralMeta = generalMeta; // This holds what was on screen
+    const sessionPerSubject = sessionGeneralMeta.perSubject || {};
+    
+    // We need to calculate totals from the session data
+    let sessionTotalCorrect = 0, sessionTotalWrong = 0;
+    Object.values(sessionPerSubject).forEach(d => {
+        sessionTotalCorrect += (d.correct || 0);
+        sessionTotalWrong += (d.wrong || 0);
+    });
+    
+    const sessionExtraTests = sessionGeneralMeta.extraTests || [];
+    sessionExtraTests.forEach(et => {
+        sessionTotalCorrect += (et.correct || 0);
+        sessionTotalWrong += (et.wrong || 0);
+    });
+    const sessionTotalQuestions = sessionTotalCorrect + sessionTotalWrong;
+
+    let watchedToday=0;
+    const perSubjectMinutesReal={};
+    const speedUsageToday={};
+    
+    checkedIds.forEach(id=>{
+      const v=profile.videos.find(vid=>vid.id===id); 
+      if (!v) return;
+      const base=v.remainingMinutes||0; 
+      
+      const selEl=container.querySelector(`.day-video-speed-select[data-video-id="${id}"]`);
+      let dailySpeed=selEl?parseFloat(selEl.value||"1"):(v.speed||1);
+      if (!dailySpeed || dailySpeed<=0) dailySpeed=1;
+      
+      const real=base/dailySpeed;
+      watchedToday+=real;
+      
+      if (v.subject) {
+        perSubjectMinutesReal[v.subject]=(perSubjectMinutesReal[v.subject]||0)+real;
+      }
+      const key=dailySpeed.toString();
+      const bucket=speedUsageToday[key] || {count:0,minutes:0};
+      bucket.count+=1; bucket.minutes+=real;
+      speedUsageToday[key]=bucket;
+      
+      v.remainingMinutes=0; 
+      v.done=true;
+      v.completionDate = logDate; // Tamamlanma tarihini kaydet (Takvim detay için)
+    });
+
+    const uncheckedIds = entry.videoIds.filter(id=>!checkedIds.includes(id));
+    uncheckedIds.forEach(id=>{
+      const v=profile.videos.find(vid=>vid.id===id); 
+      if (v) v.priorityBoost=(v.priorityBoost||0)+1;
+    });
+
+    if (watchedToday>0 || sessionTotalQuestions>0) {
+      const stats=profile.stats || {perDay:{}};
+      profile.stats=stats; if (!stats.perDay) stats.perDay={};
+      
+      const rec=stats.perDay[logDate] || {watchedMinutes:0,perSubject:{},speedUsage:{}};
+      
+      rec.watchedMinutes = (rec.watchedMinutes||0)+watchedToday;
+      rec.perSubject = rec.perSubject || {};
+      Object.keys(perSubjectMinutesReal).forEach(subj=>{
+        rec.perSubject[subj]=(rec.perSubject[subj]||0)+perSubjectMinutesReal[subj];
+      });
+      // Add questions strictly to today's ledger
+      // Note: This logic assumes completeCurrentDay is run once per plan day. 
+      // If run multiple times, it might duplicate if we just added from meta. 
+      // But since we delete the plan entry, it runs once per entry.
+      // However, if merging from future, we are good.
+      
+      rec.questionsTotal = (rec.questionsTotal||0)+sessionTotalQuestions;
+      rec.questionsCorrect = (rec.questionsCorrect||0)+sessionTotalCorrect;
+      rec.questionsWrong = (rec.questionsWrong||0)+sessionTotalWrong;
+      
+      rec.speedUsage = rec.speedUsage || {};
+      Object.keys(speedUsageToday).forEach(speed=>{
+        const src=speedUsageToday[speed];
+        const dst=rec.speedUsage[speed] || {count:0,minutes:0};
+        dst.count+=src.count; dst.minutes+=src.minutes;
+        rec.speedUsage[speed]=dst;
+      });
+
+      stats.perDay[logDate]=rec;
+    }
+
+    delete profile.plan[currentDate];
+    const planDatesAfter = Object.keys(profile.plan || {}).sort();
+    const nextDate = planDatesAfter[0] || addDays(currentDate,1);
+    
+    const todayReal = todayStr();
+    if (currentDate > todayReal) {
+        profile.settings.startDate = currentDate;
+    } else {
+        profile.settings.startDate = nextDate;
+    }
+    
+    const startStr = profile.settings.startDate || todayStr();
+    if (startStr > todayReal) {
+        skipWaitMode = false; 
+    } else {
+        if (startStr <= currentDate) {
+             profile.settings.startDate = addDays(currentDate, 1);
+        }
+    }
+
+    saveState(); 
+    dailyCheckedIds=[]; 
+    currentCheckedDate=null;
+    
+    regeneratePlan(profile); 
+    
+    renderStats(); 
+    renderCompletionEstimates();
+    renderVideos();
+    renderProfileSelector(); // BUG FIX 2: Added to update header summary
+  }
+
+  function showOtherDayDetail(dateStr) {
+    const profile = getActiveProfile();
+    const panel = document.getElementById("otherDayDetailPanel");
+    if (!panel) return;
+    const entry = (profile.plan||{})[dateStr];
+    const videosMap={}; profile.videos.forEach(v=>{videosMap[v.id]=v;});
+    if (!entry || !entry.videoIds || !entry.videoIds.length) {
+      panel.innerHTML = `<div class="text-xs text-muted">${formatDate(dateStr)} için planlı video yok.</div>`;
+      return;
+    }
+    const rows = entry.videoIds.map(id=>{
+      const v=videosMap[id]; if (!v) return "";
+      const dur=effectiveRemainingMinutes(v);
+      return `
+        <tr>
+          <td><input type="checkbox" class="other-day-video-checkbox" data-from-date="${dateStr}" data-video-id="${id}"></td>
+          <td>${v.title||"(başlıksız)"}</td>
+          <td>${dur}</td>
+        </tr>`;
+    }).join("");
+    panel.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">${formatDate(dateStr)} Videoları</div>
+        <div class="table-container" style="max-height:160px;margin-top:0.5rem;">
+          <table>
+            <thead><tr><th style="width:40px;">Seç</th><th>Video</th><th style="width:50px;">Dk</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn-ghost text-xs" id="btnMoveSelectedFromOtherDay" data-from-date="${dateStr}">Seçilenleri BUGÜNE Taşı</button>
+        </div>
+      </div>`;
+    const btnMove = document.getElementById("btnMoveSelectedFromOtherDay");
+    if (btnMove) {
+      btnMove.addEventListener("click",()=>{
+        const fromDate=btnMove.dataset.fromDate;
+        const checkboxes = panel.querySelectorAll(".other-day-video-checkbox");
+        const ids = Array.from(checkboxes).filter(cb=>cb.checked).map(cb=>cb.dataset.videoId);
+        if (!ids.length) { alert("Önce en az bir video seç."); return; }
+        moveSelectedVideosToToday(fromDate, ids);
+      });
+    }
+  }
+
+  function moveSelectedVideosToToday(fromDate, videoIds) {
+    pushHistory();
+    const profile = getActiveProfile();
+    const targetDate = profile.currentPlanStart || todayStr();
+
+    const futureEntry = (profile.plan||{})[fromDate];
+    if (!futureEntry) return;
+
+    futureEntry.videoIds = futureEntry.videoIds.filter(id => !videoIds.includes(id));
+    if (futureEntry.videoIds.length === 0) {
+      delete profile.plan[fromDate];
+    }
+
+    if (!profile.plan[targetDate]) {
+      profile.plan[targetDate] = { videoIds: [] };
+    }
+    profile.plan[targetDate].videoIds.push(...videoIds);
+
+    saveState();
+    renderDailyPlan();
+    alert("Videolar bugünün planına taşındı. Vazgeçmek istersen yanındaki 'Geri Gönder' butonunu kullanabilirsin.");
+  }
+
+  function computeDayAggregated(profile,dateStr) {
+     const statsPerDay=(profile.stats && profile.stats.perDay)||{};
+    const base=statsPerDay[dateStr] || {};
+    const meta=(profile.dayMeta||{})[dateStr] || {};
+    
+    const result = {
+      watchedMinutes: base.watchedMinutes||0,
+      generalNote: meta.generalNote != null ? meta.generalNote : (meta.note||""),
+      questionsTotal: base.questionsTotal||0,
+      questionsCorrect: base.questionsCorrect||0,
+      questionsWrong: base.questionsWrong||0,
+      perSubjectMinutes: Object.assign({}, base.perSubject||{}),
+      extraStudyMinutes:0,
+      fullNotes: [] // Array of {title, body}
+    };
+    
+    // Collect all notes for this day
+    if (result.generalNote) {
+        result.fullNotes.push({title: "Genel Not", body: result.generalNote});
+    }
+    
+    if (meta.perSubject) {
+        Object.entries(meta.perSubject).forEach(([subj, data]) => {
+            if (data.note) {
+                result.fullNotes.push({title: `Ders Notu: ${subj}`, body: data.note});
+            }
+        });
+    }
+
+    if (meta.extraStudySessions) {
+        meta.extraStudySessions.forEach(s=>{
+            const m=s.minutes||0;
+            result.extraStudyMinutes+=m;
+            result.watchedMinutes+=m;
+            if (s.subject) {
+                result.perSubjectMinutes[s.subject] = (result.perSubjectMinutes[s.subject]||0) + m;
+            }
+            if (s.note) {
+                result.fullNotes.push({title: `Ekstra Çalışma: ${s.subject} ${s.topic ? '('+s.topic+')':''}`, body: s.note});
+            }
+        });
+    }
+    
+    if (meta.extraTests) {
+        meta.extraTests.forEach(t => {
+            if (t.note) {
+                result.fullNotes.push({title: `Test Notu: ${t.subject}`, body: t.note});
+            }
+        });
+    }
+
+    return result;
+  }
+
+  function renderStats() {
+    const profile=getActiveProfile();
+    const statsOverview=document.getElementById("statsOverview");
+    const statsBySubject=document.getElementById("statsBySubject");
+    const statsDaily=document.getElementById("statsDaily");
+    const statsSpeedUsage=document.getElementById("statsSpeedUsage");
+    const statsNotesHistory=document.getElementById("statsNotesHistory");
+
+    const allVideos=profile.videos||[];
+    const activeVideos = allVideos.filter(v=>!v.done);
+    const totalRemainingReal=activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
+    const completedCount = allVideos.filter(v=>v.done).length;
+
+    statsOverview.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Toplam Kalan Süre</div>
+        <div class="stat-value">${Math.round(totalRemainingReal)} dk</div>
+        <div class="stat-extra">${activeVideos.length} Video Bekliyor</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tamamlanan</div>
+        <div class="stat-value">${completedCount} Video</div>
+        <div class="stat-extra">Toplam Kütüphane: ${allVideos.length}</div>
+      </div>`;
+
+    const perDay=(profile.stats && profile.stats.perDay)||{};
+    const metaDays=profile.dayMeta||{};
+    const allDatesSet=new Set([...Object.keys(perDay),...Object.keys(metaDays)]);
+    const allDatesArr=Array.from(allDatesSet);
+
+    const subjectTotals={};
+    allDatesArr.forEach(d=>{
+      const agg=computeDayAggregated(profile,d);
+      const ps=agg.perSubjectMinutes||{};
+      Object.keys(ps).forEach(subj=>{
+        subjectTotals[subj]=(subjectTotals[subj]||0)+ps[subj];
+      });
+    });
+    const subjectEntries=Object.entries(subjectTotals).sort((a,b)=>b[1]-a[1]);
+    statsBySubject.innerHTML = subjectEntries.length
+      ? subjectEntries.map(([s,m])=>`
+          <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+            <span>${s}</span>
+            <strong>${Math.round(m)} dk</strong>
+          </div>`).join("")
+      : "Henüz ders bazlı istatistik yok.";
+
+    const today=todayStr();
+    const last7Days=[]; for(let i=6;i>=0;i--) last7Days.push(addDays(today,-i));
+    const dailyRows=last7Days.map(d=>{
+      const agg=computeDayAggregated(profile,d);
+      const mins=agg.watchedMinutes||0;
+      const qTotal=agg.questionsTotal||0;
+      const barPct = Math.min(100, Math.round((mins/500)*100));
+      return `
+        <div class="mb-1">
+          <div class="flex-between">
+            <span class="text-xs text-muted">${formatDate(d)}</span>
+            <span class="text-xs">${Math.round(mins)} dk · ${qTotal} soru</span>
+          </div>
+          <div class="progress-wrap" style="height:0.4rem;">
+            <div class="progress-bar" style="width:${barPct}%;"></div>
+          </div>
+        </div>`;
+    }).join("");
+    statsDaily.innerHTML=dailyRows || "Veri yok.";
+
+    const speedAgg={};
+    allDatesArr.forEach(d=>{
+      const rec=perDay[d]; if (!rec || !rec.speedUsage) return;
+      Object.entries(rec.speedUsage).forEach(([speed,info])=>{
+        const agg=speedAgg[speed] || {count:0,minutes:0};
+        agg.count+=(info.count||0); agg.minutes+=(info.minutes||0);
+        speedAgg[speed]=agg;
+      });
+    });
+    if (!Object.keys(speedAgg).length) statsSpeedUsage.textContent="Henüz hız bilgisi yok.";
+    else {
+      const entries=Object.entries(speedAgg).sort((a,b)=>parseFloat(b[0])-parseFloat(a[0]));
+      const totalMinsSpeed = Object.values(speedAgg).reduce((s,x)=>s+x.minutes,0);
+      statsSpeedUsage.innerHTML = entries.map(([speed,info])=>{
+        const mins=info.minutes||0;
+        const barPct=totalMinsSpeed>0 ? Math.min(100,Math.round((mins/totalMinsSpeed)*100)) : 0;
+        return `
+          <div class="mb-1">
+            <div class="flex-between">
+              <span class="text-xs text-muted">${speed}x</span>
+              <span class="text-xs">${info.count} video · ${Math.round(mins)} dk</span>
+            </div>
+            <div class="progress-wrap" style="height:0.4rem;">
+              <div class="progress-bar" style="width:${barPct}%;"></div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    const metaEntries=Object.entries(profile.dayMeta||{})
+      .sort((a,b)=>a[0].localeCompare(b[0])).slice(-20).reverse();
+    if (!metaEntries.length) {
+      statsNotesHistory.textContent="Henüz gün notu yok.";
+    } else {
+      const blocks=metaEntries.map(([dateStr,meta])=>{
+        const agg=computeDayAggregated(profile,dateStr);
+        const qT=agg.questionsTotal||0;
+        
+        let notesHtml = "";
+        agg.fullNotes.forEach(n => {
+            notesHtml += `<div style="font-size:0.8rem; margin-top:4px; padding-top:4px; border-top:1px dashed #eee;"><strong>${n.title}:</strong> ${n.body}</div>`;
+        });
+        
+        if (!notesHtml) notesHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Not yok</div>";
+
+        return `
+          <div class="stat-card" style="padding:0.75rem;">
+            <div class="stat-label" style="border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:4px;">${formatDate(dateStr)}</div>
+            ${notesHtml}
+            <div class="stat-extra mt-1" style="text-align:right; font-size:0.7rem;">Soru: ${qT}</div>
+          </div>`;
+      }).join("");
+      statsNotesHistory.innerHTML=`<div class="stat-grid">${blocks}</div>`;
+    }
+  }
+
+  function renderCalendar() {
+    const profile=getActiveProfile();
+    const grid=document.getElementById("calendarGrid");
+    const label=document.getElementById("calendarMonthLabel");
+    const plan=profile.plan||{};
+    const offDates=profile.settings.offDates||[];
+    
+    const year = calendarViewDate.getFullYear();
+    const month = calendarViewDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const monthNames = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+    
+    label.textContent = `${monthNames[month]} ${year}`;
+
+    grid.innerHTML="";
+    const dayHeaders=["Pz","Pt","Sa","Ça","Pe","Cu","Ct"];
+    dayHeaders.forEach(h=>{
+      const div=document.createElement("div");
+      div.className="calendar-day-header"; div.textContent=h; grid.appendChild(div);
+    });
+
+    let startIndex=firstDay.getDay();
+    for(let i=0;i<startIndex;i++){
+      const div=document.createElement("div");
+      div.className="calendar-cell"; div.style.visibility="hidden";
+      grid.appendChild(div);
+    }
+
+    const realToday = new Date();
+    
+    for(let day=1;day<=daysInMonth;day++){
+      const d=new Date(year,month,day);
+      const yyyy=d.getFullYear();
+      const mm=String(d.getMonth()+1).padStart(2,"0");
+      const dd=String(d.getDate()).padStart(2,"0");
+      const dateStr=`${yyyy}-${mm}-${dd}`;
+      const cell=document.createElement("div");
+      cell.className="calendar-cell";
+      
+      if (d.getDate() === realToday.getDate() && 
+          d.getMonth() === realToday.getMonth() && 
+          d.getFullYear() === realToday.getFullYear()) {
+          cell.classList.add("today");
+      }
+      
+      if (offDates.includes(dateStr)) cell.classList.add("off");
+
+      const dayNum=document.createElement("div");
+      dayNum.className="day-number"; dayNum.textContent=day;
+      cell.appendChild(dayNum);
+
+      const planEntry=plan[dateStr];
+      const agg=computeDayAggregated(profile,dateStr);
+
+      if (planEntry && planEntry.videoIds && planEntry.videoIds.length){
+        const planMinutes = planEntry.videoIds.reduce((s,id)=>{
+          const v=profile.videos.find(v=>v.id===id);
+          return s + (v?effectiveRemainingMinutes(v):0);
+        },0);
+        const tag=document.createElement("div");
+        tag.className="calendar-tag plan";
+        tag.textContent=`${planMinutes} dk`; cell.appendChild(tag);
+      }
+      if (agg.watchedMinutes>0){
+        const tag=document.createElement("div");
+        tag.className="calendar-tag worked";
+        tag.textContent=`✓ ${Math.round(agg.watchedMinutes)} dk`;
+        cell.appendChild(tag);
+      }
+      if (offDates.includes(dateStr)){
+        const tag=document.createElement("div");
+        tag.className="calendar-tag"; 
+        tag.textContent="Tatil"; 
+        tag.style.color="var(--danger-text)";
+        cell.appendChild(tag);
+      }
+      
+      const isPast = dateStr < todayStr();
+      const hasData = (agg.watchedMinutes > 0 || agg.questionsTotal > 0 || agg.generalNote || agg.fullNotes.length > 0);
+      const isOffDay = offDates.includes(dateStr);
+      
+      if (isPast && !hasData && !isOffDay) {
+          cell.style.background = "#f1f5f9";
+          const tag = document.createElement("div");
+          tag.className = "calendar-tag";
+          tag.style.background = "#94a3b8";
+          tag.style.color = "white";
+          tag.textContent = "Girilmedi";
+          cell.appendChild(tag);
+      }
+
+      cell.addEventListener("click",()=>{
+        if (offdaySelectionMode) {
+          const arr = profile.settings.offDates || [];
+          if (arr.includes(dateStr)) profile.settings.offDates = arr.filter(d=>d!==dateStr);
+          else profile.settings.offDates = [...arr, dateStr];
+          saveState();
+          renderCalendar();
+          renderSettings();
+        } else {
+          // 1. Notları al
+          let noteListHtml = "";
+          agg.fullNotes.forEach(n => {
+              noteListHtml += `<div><small><strong>${n.title}:</strong> ${n.body}</small></div>`;
+          });
+          if(!noteListHtml) noteListHtml = "<small class='text-muted'>Not yok.</small>";
+
+          // 2. Tamamlanan Videoları Al (CompletionDate kontrolü)
+          const completedVids = profile.videos.filter(v => v.done && v.completionDate === dateStr);
+          let completedHtml = "";
+          if (completedVids.length > 0) {
+              completedHtml = completedVids.map(v => `<div style="font-size:0.8rem;">✓ ${v.title}</div>`).join("");
+          } else {
+              completedHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Tamamlanan video yok.</div>";
+          }
+
+          // 3. Planlanan Videoları Al
+          let plannedHtml = "";
+          if (planEntry && planEntry.videoIds && planEntry.videoIds.length) {
+              const plannedVids = planEntry.videoIds.map(id => profile.videos.find(v => v.id === id)).filter(Boolean);
+              if (plannedVids.length > 0) {
+                  plannedHtml = plannedVids.map(v => `<div style="font-size:0.8rem;">• ${v.title}</div>`).join("");
+              } else {
+                  plannedHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Planlanan video yok.</div>";
+              }
+          } else {
+              plannedHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Planlanan video yok.</div>";
+          }
+
+          document.getElementById("calendarDayDetails").innerHTML = `
+             <div class="alert" style="background:var(--bg-alt); border-color:var(--accent);">
+                <div style="font-size:1.1rem; font-weight:bold; margin-bottom:0.5rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem;">
+                   ${formatDate(dateStr)}
+                </div>
+                
+                <div class="row">
+                  <div class="col">
+                     <div style="font-weight:600; color:var(--success-text); margin-bottom:0.25rem; font-size:0.9rem;">Tamamlananlar</div>
+                     ${completedHtml}
+                  </div>
+                  <div class="col">
+                     <div style="font-weight:600; color:var(--accent-text); margin-bottom:0.25rem; font-size:0.9rem;">Planlananlar</div>
+                     ${plannedHtml}
+                  </div>
+                </div>
+                
+                <div style="margin-top:0.75rem; border-top:1px dashed #ccc; padding-top:0.5rem;">
+                   <div style="font-weight:600; color:var(--text-muted); margin-bottom:0.25rem; font-size:0.9rem;">Notlar</div>
+                   ${noteListHtml}
+                </div>
+             </div>
+          `;
+        }
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  // --- NOTES PAGE LOGIC ---
+  function renderNotesPage() {
+      const profile = getActiveProfile();
+      const container = document.getElementById("notesListContainer");
+      const subjectSelect = document.getElementById("noteFilterSubject");
+      const startDateInp = document.getElementById("noteFilterStart");
+      const endDateInp = document.getElementById("noteFilterEnd");
+      
+      // Populate Subject Filter
+      const subjects = new Set(["Hepsi"]);
+      Object.values(profile.dayMeta).forEach(m => {
+          if(m.perSubject) Object.keys(m.perSubject).forEach(s => subjects.add(s));
+          if(m.extraStudySessions) m.extraStudySessions.forEach(s => { if(s.subject) subjects.add(s.subject); });
+          if(m.extraTests) m.extraTests.forEach(t => { if(t.subject) subjects.add(t.subject); });
+      });
+      const currentSubj = subjectSelect.value;
+      subjectSelect.innerHTML = "";
+      Array.from(subjects).sort().forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          if(s === currentSubj) opt.selected = true;
+          subjectSelect.appendChild(opt);
+      });
+
+      const filterSubj = subjectSelect.value;
+      const filterStart = startDateInp.value;
+      const filterEnd = endDateInp.value;
+
+      container.innerHTML = "";
+
+      const allDates = Object.keys(profile.dayMeta).sort().reverse(); // Newest first
+      
+      let hasNotes = false;
+
+      allDates.forEach(dateStr => {
+          if(filterStart && dateStr < filterStart) return;
+          if(filterEnd && dateStr > filterEnd) return;
+
+          const agg = computeDayAggregated(profile, dateStr);
+          if (agg.fullNotes.length === 0) return;
+
+          // Filter notes by subject if needed
+          const filteredNotes = agg.fullNotes.filter(n => {
+              if (filterSubj === "Hepsi") return true;
+              if (n.title === "Genel Not") return true; // Always show general note? or only if "Hepsi"
+              return n.title.includes(filterSubj);
+          });
+
+          if (filteredNotes.length === 0) return;
+
+          hasNotes = true;
+          
+          const dayCard = document.createElement("div");
+          dayCard.className = "note-card";
+          
+          const header = document.createElement("div");
+          header.className = "note-card-header";
+          header.innerHTML = `<span>${formatDate(dateStr)}</span>`;
+          dayCard.appendChild(header);
+
+          filteredNotes.forEach(n => {
+              const item = document.createElement("div");
+              item.className = "note-item";
+              item.innerHTML = `
+                <div class="note-item-title">${n.title}</div>
+                <div class="note-item-body">${n.body}</div>
+              `;
+              dayCard.appendChild(item);
+          });
+
+          container.appendChild(dayCard);
+      });
+
+      if (!hasNotes) {
+          container.innerHTML = "<div class='text-muted'>Seçilen kriterlere uygun not bulunamadı.</div>";
+      }
+  }
+
+  function exportJsonToDownload() {
+    const raw=JSON.stringify(state,null,2);
+    const blob=new Blob([raw],{type:"application/json;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="calisma_planlayici_yedek.json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  
+  function triggerJsonImport() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (!confirm("Seçilen yedek dosyası yüklenecek ve MEVCUT TÜM VERİLER SİLİNECEK. Onaylıyor musun?")) return;
+          const reader = new FileReader();
+          reader.onload = (re) => {
+              try {
+                  const text = re.target.result;
+                  const parsed = JSON.parse(text);
+                  pushHistory();
+                  Object.keys(state).forEach(k=>{delete state[k];});
+                  Object.assign(state,parsed);
+                  saveState();
+                  renderAll();
+                  alert("Yedek başarıyla yüklendi.");
+              } catch (err) {
+                  alert("Hata: " + err.message);
+              }
+          };
+          reader.readAsText(file, "utf-8");
+      };
+      input.click();
+  }
+  
+  // --- YENİ EKLENEN: TARİH SENKRONİZASYON FONKSİYONU ---
+  function checkAndHandleDateDrift(profile) {
+      const today = todayStr();
+      const currentStart = profile.settings.startDate || today;
+      
+      // Eğer plan başlangıcı bugünden daha eskiyse (sisteme girilmeyen günler olmuşsa)
+      if (today > currentStart) {
+          // 1. Plan başlangıç tarihini bugüne çek
+          profile.settings.startDate = today;
+          
+          // 2. Geçmişte kalan (bugünden eski) plan girişlerini temizle.
+          // Bu videoları regeneratePlan otomatik olarak havuza alıp bugünden itibaren tekrar dağıtacak.
+          if (profile.plan) {
+              Object.keys(profile.plan).forEach(dateKey => {
+                  if (dateKey < today) {
+                      delete profile.plan[dateKey];
+                  }
+              });
+          }
+          
+          // 3. Planı bugünden itibaren yeniden oluştur
+          regeneratePlan(profile);
+          saveState();
+          // Not: Kullanıcıya sessizce güncelleme yapıyoruz, popup ile rahatsız etmeye gerek yok.
+      }
+  }
+
+  function renderAll() {
+    const profile = getActiveProfile();
+    
+    // Her render öncesi tarih kayması olup olmadığını kontrol et
+    checkAndHandleDateDrift(profile);
+
+    renderProfileSelector();
+    renderFilters();
+    renderSettings();
+    renderVideos();
+    renderDailyPlan();
+    renderStats();
+    renderCalendar();
+    renderCompletionEstimates();
+    renderNotesPage(); // init empty or refresh
+    updateUndoRedoUI();
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    const savedTheme=localStorage.getItem(THEME_KEY)||"light";
+    setTheme(savedTheme);
+    const savedView=localStorage.getItem(VIEW_KEY)||"desktop";
+    setViewMode(savedView);
+
+    document.getElementById("btnToggleTheme").addEventListener("click",toggleTheme);
+    const viewSelect=document.getElementById("viewModeSelect");
+    if (viewSelect) {
+      viewSelect.addEventListener("change",()=>setViewMode(viewSelect.value));
+    }
+
+    loadState();
+
+    document.querySelectorAll("nav.sidebar button").forEach(btn=>{
+      btn.addEventListener("click",()=>setActivePage(btn.dataset.page));
+    });
+
+    const profileSelect=document.getElementById("profileSelect");
+    profileSelect.addEventListener("change",()=>{
+      state.activeProfileId=profileSelect.value;
+      saveState(true); dailyCheckedIds=[]; currentCheckedDate=null; renderAll();
+    });
+    document.getElementById("btnAddProfile").addEventListener("click",addProfile);
+    document.getElementById("btnDeleteProfile").addEventListener("click",deleteProfile);
+
+    document.getElementById("filterSubject").addEventListener("change",(e)=>{
+      state.ui.filters.subject=e.target.value; state.ui.filters.topic="Hepsi";
+      saveState(true); renderFilters();
+    });
+    document.getElementById("filterTopic").addEventListener("change",(e)=>{
+      state.ui.filters.topic=e.target.value;
+      saveState(true); renderFilterVideos();
+    });
+
+    document.getElementById("btnAddVideo").addEventListener("click",addVideoFromInputs);
+    document.getElementById("btnClearVideos").addEventListener("click",clearAllVideos);
+    document.getElementById("btnExportCsv").addEventListener("click",exportCsv);
+    
+    const csvBtn = document.getElementById("btnImportCsv");
+    const csvInput = document.getElementById("csvVideoInput");
+    if (csvBtn && csvInput) {
+      csvBtn.addEventListener("click", () => csvInput.click());
+      csvInput.addEventListener("change", (e) => importCsvVideos(e.target.files[0]));
+    }
+
+    const btnSaveGen = document.getElementById("btnSaveAndRegenerate");
+    if (btnSaveGen) {
+        btnSaveGen.addEventListener("click", () => {
+             pushHistory();
+             saveSettingsFromInputs();
+             const profile=getActiveProfile();
+             regeneratePlan(profile);
+             alert("Ayarlar kaydedildi ve plan yeniden oluşturuldu.");
+        });
+    }
+
+    document.getElementById("btnExportJson").addEventListener("click",exportJsonToDownload);
+    document.getElementById("btnImportJsonTrigger").addEventListener("click", triggerJsonImport);
+
+    const offBtn = document.getElementById("btnToggleOffdayMode");
+    if (offBtn) {
+      offBtn.addEventListener("click",()=>{
+        offdaySelectionMode = !offdaySelectionMode;
+        renderCalendar();
+        offBtn.textContent = "Tatil Günü Seçimi: " + (offdaySelectionMode ? "AÇIK" : "KAPALI");
+        offBtn.style.color = offdaySelectionMode ? "var(--danger-text)" : "var(--text-muted)";
+      });
+    }
+    
+    const skipBtn = document.getElementById("btnSkipWaitMode");
+    if (skipBtn) {
+        skipBtn.addEventListener("click", () => {
+            skipWaitMode = true;
+            renderDailyPlan();
+        });
+    }
+    
+    document.getElementById("btnPrevMonth").addEventListener("click", () => {
+      calendarViewDate.setMonth(calendarViewDate.getMonth() - 1);
+      renderCalendar();
+    });
+    document.getElementById("btnNextMonth").addEventListener("click", () => {
+      calendarViewDate.setMonth(calendarViewDate.getMonth() + 1);
+      renderCalendar();
+    });
+    document.getElementById("btnGoToday").addEventListener("click", () => {
+      calendarViewDate = new Date();
+      renderCalendar();
+    });
+
+    // Notes Page Listeners
+    document.getElementById("btnApplyNoteFilter").addEventListener("click", renderNotesPage);
+    document.getElementById("btnPrintNotes").addEventListener("click", () => {
+        window.print();
+    });
+
+    document.getElementById("btnUndo").addEventListener("click", performUndo);
+    document.getElementById("btnRedo").addEventListener("click", performRedo);
+
+    renderAll();
+  });
+})();
+</script>
+</body>
+</html>
