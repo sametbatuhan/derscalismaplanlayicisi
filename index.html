@@ -3435,6 +3435,19 @@
       setPlannerState(snapshot);
     }
 
+
+    // E-posta veya şifre alanındayken Enter ile giriş yap
+    function handleAuthKeydown(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (btnLogin) {
+          btnLogin.click();
+        }
+      }
+    }
+    if (authEmailInput) authEmailInput.addEventListener("keydown", handleAuthKeydown);
+    if (authPassInput) authPassInput.addEventListener("keydown", handleAuthKeydown);
+
     if (btnCloudSave) {
       btnCloudSave.addEventListener("click", () => {
         saveStateToCloud().catch(err => alert("Hata: " + err.message));
@@ -3451,12 +3464,22 @@
 
     if (btnRegister) {
       btnRegister.addEventListener("click", async () => {
+        authErrorEl.style.color = "#ef4444";
         authErrorEl.textContent = "";
         try {
-          await auth.createUserWithEmailAndPassword(
+          const cred = await auth.createUserWithEmailAndPassword(
             authEmailInput.value,
             authPassInput.value
           );
+          try {
+            await cred.user.sendEmailVerification();
+            authErrorEl.style.color = "#16a34a";
+            authErrorEl.textContent = "Doğrulama bağlantısı e-posta adresine gönderildi. Lütfen e-postanı kontrol edip bağlantıya tıkladıktan sonra giriş yap.";
+          } catch (ve) {
+            authErrorEl.textContent = "Kayıt başarılı, ancak doğrulama e-postası gönderilemedi: " + ve.message;
+          }
+          // Kullanıcıyı doğrulama yapılana kadar sistemden çıkar
+          await auth.signOut();
         } catch (err) {
           authErrorEl.textContent = err.message;
         }
@@ -3465,12 +3488,17 @@
 
     if (btnLogin) {
       btnLogin.addEventListener("click", async () => {
+        authErrorEl.style.color = "#ef4444";
         authErrorEl.textContent = "";
         try {
-          await auth.signInWithEmailAndPassword(
+          const cred = await auth.signInWithEmailAndPassword(
             authEmailInput.value,
             authPassInput.value
           );
+          if (!cred.user.emailVerified) {
+            await auth.signOut();
+            authErrorEl.textContent = "E-posta adresin henüz doğrulanmamış. Lütfen e-postana gelen doğrulama bağlantısına tıkladıktan sonra tekrar giriş yap.";
+          }
         } catch (err) {
           authErrorEl.textContent = err.message;
         }
@@ -3529,7 +3557,6 @@
         // Kullanıcı isterse "Buluttan Yükle" butonuna basarak senkron edebilir.
       } else {
         // Oturum kapandı
-        localStorage.removeItem("planner_last_uid");
         appContainer.style.display  = "none";
         authContainer.style.display = "block";
         btnLogout.style.display     = "none";
