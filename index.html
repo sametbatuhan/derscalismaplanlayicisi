@@ -3496,6 +3496,14 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
+        // Kullanıcı değişimini kontrol et
+        const lastUid = localStorage.getItem("planner_last_uid");
+        if (lastUid && lastUid !== user.uid) {
+          // Farklı bir kullanıcı ile giriş yapıldı; yerel durumu sıfırla
+          resetStateCompletely();
+        }
+        localStorage.setItem("planner_last_uid", user.uid);
+
         authContainer.style.display = "none";
         appContainer.style.display  = "block";
         btnLogout.style.display     = "block";
@@ -3504,6 +3512,8 @@
         // Not: Buluttan veriyi otomatik yüklemiyoruz.
         // Kullanıcı isterse "Buluttan Yükle" butonuna basarak senkron edebilir.
       } else {
+        // Oturum kapandı
+        localStorage.removeItem("planner_last_uid");
         appContainer.style.display  = "none";
         authContainer.style.display = "block";
         btnLogout.style.display     = "none";
