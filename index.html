@@ -362,6 +362,7 @@
             <option value="desktop">Masaüstü</option>
             <option value="mobile">Mobil</option>
           </select>
+          <button id="btnLogoutTop" class="btn-ghost" style="display:none;">Çıkış</button>
         </div>
       </div>
     </div>
@@ -3391,6 +3392,7 @@
     const btnRegister     = document.getElementById("btnRegister");
     const btnForgotPassword = document.getElementById("btnForgotPassword");
     const btnLogout       = document.getElementById("btnLogout");
+    const btnLogoutTop    = document.getElementById("btnLogoutTop");
     const btnCloudSave    = document.getElementById("btnCloudSave");
     const btnCloudLoad    = document.getElementById("btnCloudLoad");
 
@@ -3486,11 +3488,18 @@
       });
     }
 
+    if (btnLogoutTop) {
+      btnLogoutTop.addEventListener("click", async () => {
+        await auth.signOut();
+      });
+    }
+
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         authContainer.style.display = "none";
         appContainer.style.display  = "block";
         btnLogout.style.display     = "block";
+        if (btnLogoutTop) btnLogoutTop.style.display = "inline-flex";
         loginStatusEl.textContent  = user.email + " ile giriş yapıldı.";
         // Not: Buluttan veriyi otomatik yüklemiyoruz.
         // Kullanıcı isterse "Buluttan Yükle" butonuna basarak senkron edebilir.
@@ -3498,19 +3507,11 @@
         appContainer.style.display  = "none";
         authContainer.style.display = "block";
         btnLogout.style.display     = "none";
+        if (btnLogoutTop) btnLogoutTop.style.display = "none";
         loginStatusEl.textContent  = "";
         authErrorEl.textContent     = "";
       }
     });
-
-
-
-    document.querySelectorAll("select.speed-select").forEach(sel=>{
-      applySpeedColor(sel);
-      sel.addEventListener("change",()=>applySpeedColor(sel));
-    });
-
-    document.querySelectorAll("nav.sidebar button").forEach(btn=>{
       btn.addEventListener("click",()=>setActivePage(btn.dataset.page));
     });
 
