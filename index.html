@@ -852,6 +852,21 @@
   }
 
 
+  // Tüm yerel durumu tamamen sıfırla (farklı kullanıcı ile giriş yapıldığında)
+  function resetStateCompletely() {
+    try { pushHistory(); } catch (e) {}
+    state.profiles = [];
+    state.activeProfileId = null;
+    state.ui = {
+      activePage: "daily-plan",
+      filters: { subject: "Hepsi", topic: "Hepsi" }
+    };
+    dailyCheckedIds = [];
+    currentCheckedDate = null;
+    saveState();
+    try { renderAll(); } catch (e) {}
+  }
+
   function todayStr() {
     const t = new Date();
     const y = t.getFullYear();
@@ -3413,6 +3428,7 @@
       const docRef  = db.collection("plans").doc(user.uid);
       const docSnap = await docRef.get();
       if (!docSnap.exists) {
+        alert("Bu hesap için bulut kaydı bulunamadı.");
         return;
       }
       const snapshot = docSnap.data().data;
