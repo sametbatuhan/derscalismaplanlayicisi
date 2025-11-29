@@ -1916,7 +1916,68 @@
 }
 
 
-  // --- DAILY PLAN ---
+  
+  // --- DAILY PLAN HELPERS (checkbox & not alanı) ---
+  function autoResizeTextArea(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+
+  function persistDailyChecks(profile, dateStr) {
+    try {
+      if (!profile || !dateStr) return;
+      profile.dayMeta = profile.dayMeta || {};
+      const meta = profile.dayMeta[dateStr] || {};
+      meta.checkedVideoIds = Array.isArray(dailyCheckedIds) ? dailyCheckedIds.slice() : [];
+      profile.dayMeta[dateStr] = meta;
+      saveState();
+
+      const user = auth && auth.currentUser ? auth.currentUser : null;
+      if (user && typeof db !== "undefined" && db) {
+        const docId = `${user.uid}_${profile.id || "default"}_${dateStr}`;
+        db.collection("dailyChecks").doc(docId).set({
+          checked: meta.checkedVideoIds,
+          updatedAt: new Date().toISOString()
+        }, { merge: true }).catch(function(err){
+          console.error("dailyChecks firestore kaydetme hatası", err);
+        });
+      }
+    } catch (e) {
+      console.error("dailyChecks yerel kaydetme hatası", e);
+    }
+  }
+
+  function syncDailyChecksFromFirestore(profile, dateStr) {
+    try {
+      const user = auth && auth.currentUser ? auth.currentUser : null;
+      if (!user || !profile || !dateStr || typeof db === "undefined" || !db) return;
+      const docId = `${user.uid}_${profile.id || "default"}_${dateStr}`;
+      db.collection("dailyChecks").doc(docId).get().then(function(doc){
+        if (!doc.exists) return;
+        const data = doc.data() || {};
+        const cloudList = Array.isArray(data.checked) ? data.checked : [];
+        if (!cloudList.length) return;
+
+        dailyCheckedIds = cloudList.slice();
+        profile.dayMeta = profile.dayMeta || {};
+        const meta = profile.dayMeta[dateStr] || {};
+        meta.checkedVideoIds = cloudList.slice();
+        profile.dayMeta[dateStr] = meta;
+        saveState();
+        try {
+          renderDailyPlan();
+        } catch (e) {
+          console.error("renderDailyPlan yeniden çizim hatası", e);
+        }
+      }).catch(function(err){
+        console.error("dailyChecks firestore okuma hatası", err);
+      });
+    } catch (e) {
+      console.error("syncDailyChecksFromFirestore genel hata", e);
+    }
+  }
+// --- DAILY PLAN ---
   function saveCurrentDayMetaInputs(profile, currentDate) {
     const container = document.getElementById("dailyPlanContent");
     if (!container) return profile.dayMeta[currentDate] || {};
@@ -2055,10 +2116,17 @@
     const videosMap={}; profile.videos.forEach(v=>{videosMap[v.id]=v;});
     
     const rawMeta = profile.dayMeta[currentDate] || {};
+    if (Array.isArray(rawMeta.checkedVideoIds) && rawMeta.checkedVideoIds.length && currentCheckedDate===currentDate) {
+      dailyCheckedIds = rawMeta.checkedVideoIds.slice();
+    }
     const generalNote = rawMeta.generalNote != null ? rawMeta.generalNote : (rawMeta.note || "");
     const perSubjectMeta = rawMeta.perSubject || {};
     const extraStudy = rawMeta.extraStudySessions || [];
     const extraTests = rawMeta.extraTests || [];
+
+    if (!Array.isArray(rawMeta.checkedVideoIds) || rawMeta.checkedVideoIds.length === 0) {
+      syncDailyChecksFromFirestore(profile, currentDate);
+    }
 
     let totalDayMinutes=0;
     const rowsHtml = videoIds.map(id=>{
@@ -2108,7 +2176,7 @@
           return `
             <tr class="per-subject-row" data-subject="${escSubj}">
               <td>${subj}</td>
-              <td><input type="text" class="sub-note-input medium-input" value="${escNote}" placeholder="Ders notu..."></td>
+              <td><textarea class="sub-note-input medium-input" rows="3" placeholder="Ders notu..." style="width:100%; min-height:120px; resize:vertical; overflow:hidden; line-height:1.5;">${escNote}</textarea></td>
               <td><input type="number" min="0" class="sub-correct-input small-input" value="${corr}"></td>
               <td><input type="number" min="0" class="sub-wrong-input small-input" value="${wrong}"></td>
             </tr>`;
@@ -2195,7 +2263,7 @@
         <div class="col" style="flex:1;">
           <div class="field-group">
             <div class="field-label">Genel Not</div>
-            <textarea id="dayGeneralNoteInput" rows="2" placeholder="Bugün nasıl geçti?">${generalNote}</textarea>
+            <textarea id="dayGeneralNoteInput" rows="4" placeholder="Bugün nasıl geçti?" style="width:100%; min-height:160px; resize:vertical; overflow-y:auto; line-height:1.5; padding:0.75rem;">${generalNote}</textarea>
           </div>
           <div class="field-group">
             <div class="field-label">Ders Notları & Sorular</div>
@@ -2264,6 +2332,53 @@
     const extraSuggestionEl = document.getElementById("dailyExtraSuggestion");
     const btnAutoFillExtra = document.getElementById("btnAutoFillExtra");
 
+    const generalNoteEl = container.querySelector("#dayGeneralNoteInput");
+    if (generalNoteEl) {
+      autoResizeTextArea(generalNoteEl);
+      try {
+        const len = generalNoteEl.value.length;
+        generalNoteEl.selectionStart = generalNoteEl.selectionEnd = len;
+      } catch (e) {}
+      generalNoteEl.addEventListener("input", function () {
+        autoResizeTextArea(generalNoteEl);
+      });
+      generalNoteEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          const start = generalNoteEl.selectionStart;
+          const end = generalNoteEl.selectionEnd;
+          const val = generalNoteEl.value;
+          generalNoteEl.value = val.substring(0, start) + "\n" + val.substring(end);
+          generalNoteEl.selectionStart = generalNoteEl.selectionEnd = start + 1;
+          autoResizeTextArea(generalNoteEl);
+        }
+      });
+    }
+
+    // Ders notu alanları (sub-note-input) için otomatik büyüme ve Shift+Enter desteği
+    const subNoteEls = container.querySelectorAll(".sub-note-input");
+    subNoteEls.forEach(function (el) {
+      autoResizeTextArea(el);
+      try {
+        const len = el.value.length;
+        el.selectionStart = el.selectionEnd = len;
+      } catch (e) {}
+      el.addEventListener("input", function () {
+        autoResizeTextArea(el);
+      });
+      el.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          const start = el.selectionStart;
+          const end = el.selectionEnd;
+          const val = el.value;
+          el.value = val.substring(0, start) + "\n" + val.substring(end);
+          el.selectionStart = el.selectionEnd = start + 1;
+          autoResizeTextArea(el);
+        }
+      });
+    });
+
     function computeCheckedRealMinutes() {
       let base = Array.from(dayCheckboxes).reduce((sum, el) => {
         if (!el.checked) return sum;
@@ -2326,6 +2441,7 @@
         } else {
           dailyCheckedIds = dailyCheckedIds.filter(x => x !== id);
         }
+        persistDailyChecks(profile, currentDate);
         recalcProgress();
       });
     });
