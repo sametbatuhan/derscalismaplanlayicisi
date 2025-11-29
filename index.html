@@ -3511,6 +3511,8 @@
         loginStatusEl.textContent  = "";
         authErrorEl.textContent     = "";
       }
+    });
+
     document.querySelectorAll("nav.sidebar button").forEach(btn=>{
       btn.addEventListener("click",()=>setActivePage(btn.dataset.page));
     });
