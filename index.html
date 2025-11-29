@@ -327,20 +327,6 @@
     <button id="btnRegister" class="btn-ghost" style="flex:1;">Kayıt Ol</button>
   </div>
   <button id="btnForgotPassword" class="btn-ghost" style="margin-top:0.5rem;width:100%;">Şifremi Unuttum</button>
-  <hr style="margin:1rem 0;border:none;border-top:1px solid #e5e7eb;">
-  <div class="field-group">
-    <div class="field-label">Telefon (örn. +90 5xx xxx xx xx)</div>
-    <input type="tel" id="authPhone" placeholder="+90 5xx xxx xx xx">
-  </div>
-  <div class="field-group">
-    <div class="field-label">SMS Kodu</div>
-    <input type="text" id="authPhoneCode" placeholder="SMS ile gelen kod">
-  </div>
-  <div id="recaptcha-container" style="margin-bottom:0.5rem;"></div>
-  <div class="row" style="gap:0.5rem;margin-bottom:0.5rem;">
-    <button id="btnPhoneSendCode" style="flex:1;">📲 Koda Gönder</button>
-    <button id="btnPhoneVerify" class="btn-ghost" style="flex:1;">✅ Kodu Doğrula</button>
-  </div>
   <button id="btnLogout" class="btn-ghost" style="margin-top:0.5rem;display:none;width:100%;">Çıkış Yap</button>
   <p id="authError" style="color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></p>
 </div>
@@ -3682,94 +3668,6 @@
 
     renderAll();
   });
-})();
-
-// --- Telefon ile Giriş (Firebase Phone Auth) ---
-(function () {
-  let phoneConfirmationResult = null;
-  let phoneRecaptcha = null;
-
-  function initPhoneAuth() {
-    try {
-      const phoneInput = document.getElementById("authPhone");
-      const codeInput = document.getElementById("authPhoneCode");
-      const sendBtn   = document.getElementById("btnPhoneSendCode");
-      const verifyBtn = document.getElementById("btnPhoneVerify");
-      const errorEl   = document.getElementById("authError");
-
-      if (!phoneInput || !codeInput || !sendBtn || !verifyBtn) return;
-      if (!window.firebase || (typeof auth === "undefined")) return;
-
-      if (!phoneRecaptcha) {
-        phoneRecaptcha = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
-          size: "invisible"
-        });
-      }
-
-      sendBtn.addEventListener("click", function () {
-        const phone = phoneInput.value.trim();
-        if (!phone) {
-          if (errorEl) errorEl.textContent = "Lütfen telefon numaranı gir.";
-          return;
-        }
-        if (errorEl) errorEl.textContent = "";
-        sendBtn.disabled = true;
-        verifyBtn.disabled = true;
-        sendBtn.textContent = "Gönderiliyor...";
-
-        auth.signInWithPhoneNumber(phone, phoneRecaptcha)
-          .then(function (confirmationResult) {
-            phoneConfirmationResult = confirmationResult;
-            if (errorEl) errorEl.textContent = "SMS kodu gönderildi. Lütfen kodu girip 'Kodu Doğrula'ya bas.";
-          })
-          .catch(function (err) {
-            console.error("Telefon doğrulama hatası:", err);
-            if (errorEl) errorEl.textContent = "Telefon doğrulama başarısız: " + (err.message || err);
-          })
-          .finally(function () {
-            sendBtn.disabled = false;
-            verifyBtn.disabled = false;
-            sendBtn.textContent = "📲 Koda Gönder";
-          });
-      });
-
-      verifyBtn.addEventListener("click", function () {
-        if (!phoneConfirmationResult) {
-          if (errorEl) errorEl.textContent = "Önce telefonuna kod gönder.";
-          return;
-        }
-        const code = codeInput.value.trim();
-        if (!code) {
-          if (errorEl) errorEl.textContent = "Lütfen SMS ile gelen kodu gir.";
-          return;
-        }
-        verifyBtn.disabled = true;
-        verifyBtn.textContent = "Doğrulanıyor...";
-
-        phoneConfirmationResult.confirm(code)
-          .then(function (result) {
-            // Başarılı giriş -> auth.onAuthStateChanged zaten uygulama ekranını açıyor.
-            if (errorEl) errorEl.textContent = "";
-          })
-          .catch(function (err) {
-            console.error("Kod doğrulama hatası:", err);
-            if (errorEl) errorEl.textContent = "Kod doğrulanamadı: " + (err.message || err);
-          })
-          .finally(function () {
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = "✅ Kodu Doğrula";
-          });
-      });
-    } catch (e) {
-      console.error("Telefon auth init hatası:", e);
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initPhoneAuth);
-  } else {
-    initPhoneAuth();
-  }
 })();
 </script>
 </div><!-- app-container -->
