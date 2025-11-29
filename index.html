@@ -288,8 +288,32 @@
       .sidebar button { width: auto; white-space: nowrap; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
     }
   </style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {apiKey:"AIzaSyCLVZ-GbVVFVodsfdCtTfZPbuinlnI1PiY",authDomain:"derscalismaplanlayicisi.firebaseapp.com",projectId:"derscalismaplanlayicisi",storageBucket:"derscalismaplanlayicisi.firebasestorage.app",messagingSenderId:"234033292808",appId:"1:234033292808:web:38870f41bb22d1118c13bd",measurementId:"G-2HYM8ZEXZV"};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+</script>
+
 </head>
 <body data-theme="light" data-view="desktop">
+
+<!-- Login -->
+<div id="auth-container">
+  <h2>Ders Çalışma Planlayıcısı – Giriş</h2>
+  <input type="email" id="authEmail" placeholder="E-posta"><br>
+  <input type="password" id="authPassword" placeholder="Şifre"><br>
+  <button id="btnLogin">Giriş Yap</button>
+  <button id="btnRegister">Kayıt Ol</button>
+  <p id="authError" style="color:red;"></p>
+</div>
+<div id="app-container" style="display:none;">
+
 <div id="app">
   <header class="app-header">
     <div class="header-left">
@@ -3406,5 +3430,6 @@
   });
 })();
 </script>
+</div><!-- app-container -->
 </body>
 </html>
