@@ -3586,9 +3586,6 @@
 
     const profileSelect=document.getElementById("profileSelect");
     profileSelect.addEventListener("change",()=>{
-      changeProfile(profileSelect.value);
-    });
-stener("change",()=>{
       state.activeProfileId=profileSelect.value;
       saveState(true); dailyCheckedIds=[]; currentCheckedDate=null; renderAll();
     });
