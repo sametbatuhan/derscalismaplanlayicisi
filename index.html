@@ -3540,6 +3540,20 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
+        // E-posta doğrulaması yapılmamışsa hiçbir şekilde uygulamaya sokma
+        if (!user.emailVerified) {
+          // Unverified kullanıcıyı hemen sistemden çıkar
+          await auth.signOut();
+          appContainer.style.display  = "none";
+          authContainer.style.display = "block";
+          btnLogout.style.display     = "none";
+          if (btnLogoutTop) btnLogoutTop.style.display = "none";
+          loginStatusEl.textContent   = "";
+          authErrorEl.style.color     = "#ef4444";
+          authErrorEl.textContent     = "E-posta adresin doğrulanmamış. Lütfen e-postana gelen bağlantıya tıklayıp ardından tekrar giriş yap.";
+          return;
+        }
+
         // Kullanıcı değişimini kontrol et
         const lastUid = localStorage.getItem("planner_last_uid");
         if (lastUid && lastUid !== user.uid) {
@@ -3572,6 +3586,9 @@
 
     const profileSelect=document.getElementById("profileSelect");
     profileSelect.addEventListener("change",()=>{
+      changeProfile(profileSelect.value);
+    });
+stener("change",()=>{
       state.activeProfileId=profileSelect.value;
       saveState(true); dailyCheckedIds=[]; currentCheckedDate=null; renderAll();
     });
