@@ -3698,7 +3698,7 @@
       const errorEl   = document.getElementById("authError");
 
       if (!phoneInput || !codeInput || !sendBtn || !verifyBtn) return;
-      if (!window.firebase || !window.auth) return;
+      if (!window.firebase || (typeof auth === "undefined")) return;
 
       if (!phoneRecaptcha) {
         phoneRecaptcha = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
