@@ -314,16 +314,18 @@
 <div id="auth-container" class="card" style="max-width:420px;margin:1.5rem auto;padding:1.5rem;border-radius:12px;">
   <h2 class="app-title" style="margin-bottom:0.5rem;">Ders Çalışma Planlayıcısı – Giriş</h2>
   <p id="authUserInfo" class="text-sm text-muted" style="margin:0 0 0.75rem 0;"></p>
-  
-    <div class="row" style="flex-wrap:wrap;gap:0.5rem;">
-      <button id="btnLoginGoogle" class="btn-ghost" style="flex:1;min-width:45%;">Google</button>
-      <button id="btnLoginApple" class="btn-ghost" style="flex:1;min-width:45%;">Apple</button>
-      <button id="btnLoginFacebook" class="btn-ghost" style="flex:1;min-width:45%;">Facebook</button>
-      <button id="btnLoginTwitter" class="btn-ghost" style="flex:1;min-width:45%;">Twitter</button>
-      <button id="btnLoginMicrosoft" class="btn-ghost" style="flex:1;min-width:45%;">Microsoft</button>
-    </div>
+  <div class="field-group">
+    <div class="field-label">E-posta</div>
+    <input type="email" id="authEmail" placeholder="ornek@mail.com">
   </div>
-
+  <div class="field-group">
+    <div class="field-label">Şifre</div>
+    <input type="password" id="authPassword" placeholder="En az 6 karakter">
+  </div>
+  <div class="row" style="gap:0.5rem;">
+    <button id="btnLogin" style="flex:1;">Giriş Yap</button>
+    <button id="btnRegister" class="btn-ghost" style="flex:1;">Kayıt Ol</button>
+  </div>
   <button id="btnForgotPassword" class="btn-ghost" style="margin-top:0.5rem;width:100%;">Şifremi Unuttum</button>
   <button id="btnLogout" class="btn-ghost" style="margin-top:0.5rem;display:none;width:100%;">Çıkış Yap</button>
   <p id="authError" style="color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></p>
@@ -3409,17 +3411,6 @@
     const btnCloudSave    = document.getElementById("btnCloudSave");
     const btnCloudLoad    = document.getElementById("btnCloudLoad");
 
-    // Telefon ve sosyal giriş elemanları
-    const phoneNumberInput   = document.getElementById("phoneNumber");
-    const phoneCodeInput     = document.getElementById("phoneCode");
-    const phoneCodeGroup     = document.getElementById("phoneCodeGroup");
-    const btnPhoneSendCode   = document.getElementById("btnPhoneSendCode");
-    const btnPhoneVerify     = document.getElementById("btnPhoneVerify");
-    
-
-    let recaptchaVerifier = null;
-    let phoneConfirmationResult = null;
-
     async function saveStateToCloud() {
       const user = auth.currentUser;
       if (!user) { alert("Önce giriş yap."); return; }
@@ -3456,95 +3447,6 @@
     }
     if (authEmailInput) authEmailInput.addEventListener("keydown", handleAuthKeydown);
     if (authPassInput) authPassInput.addEventListener("keydown", handleAuthKeydown);
-
-
-    // E-posta veya şifre alanındayken Enter ile giriş yap
-    function handleAuthKeydown(e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (btnLogin) {
-          btnLogin.click();
-        }
-      }
-    }
-    if (authEmailInput) authEmailInput.addEventListener("keydown", handleAuthKeydown);
-    if (authPassInput) authPassInput.addEventListener("keydown", handleAuthKeydown);
-
-    // Genel provider ile giriş fonksiyonu
-    async function signInWithProvider(provider) {
-      authErrorEl.style.color = "#ef4444";
-      authErrorEl.textContent = "";
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (err) {
-        authErrorEl.textContent = err.message;
-      }
-    }
-
-    // Telefon girişi için reCAPTCHA başlat
-    if (btnPhoneSendCode && window.firebase && !recaptchaVerifier) {
-      recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
-        size: "invisible"
-      });
-    }
-
-    if (btnPhoneSendCode) {
-      btnPhoneSendCode.addEventListener("click", async () => {
-        authErrorEl.style.color = "#ef4444";
-        authErrorEl.textContent = "";
-        const phone = (phoneNumberInput?.value || "").trim();
-        if (!phone) {
-          authErrorEl.textContent = "Lütfen telefon numaranı yaz.";
-          return;
-        }
-        try {
-          phoneConfirmationResult = await auth.signInWithPhoneNumber(phone, recaptchaVerifier);
-          if (phoneCodeGroup) phoneCodeGroup.style.display = "block";
-          authErrorEl.style.color = "#16a34a";
-          authErrorEl.textContent = "SMS ile gönderilen kodu yaz ve onayla.";
-        } catch (err) {
-          authErrorEl.textContent = err.message;
-        }
-      });
-    }
-
-    if (btnPhoneVerify) {
-      btnPhoneVerify.addEventListener("click", async () => {
-        authErrorEl.style.color = "#ef4444";
-        authErrorEl.textContent = "";
-        const code = (phoneCodeInput?.value || "").trim();
-        if (!code) {
-          authErrorEl.textContent = "SMS kodunu yaz.";
-          return;
-        }
-        if (!phoneConfirmationResult) {
-          authErrorEl.textContent = "Önce telefonuna kod göndermelisin.";
-          return;
-        }
-        try {
-          await phoneConfirmationResult.confirm(code);
-          authErrorEl.textContent = "";
-        } catch (err) {
-          authErrorEl.textContent = err.message;
-        }
-      });
-    }
-
-    // Sosyal giriş butonları
-    
-    }
-
-    
-    }
-
-    
-    }
-
-    
-    }
-
-    
-    }
 
     if (btnCloudSave) {
       btnCloudSave.addEventListener("click", () => {
