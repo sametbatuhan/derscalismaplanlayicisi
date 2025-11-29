@@ -3471,7 +3471,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       });
     }
 
-    if (window.auth) {
+    if (auth) {
       auth.onAuthStateChanged(async (user) => {
         if (user) {
           authContainer.style.display = "none";
