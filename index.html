@@ -70,7 +70,7 @@
     
     /* Layout Fix: Scrollbar inside content only */
     html, body {
-      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      margin: 0; padding: 0;
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg); color: var(--text); line-height: 1.5;
     }
@@ -341,6 +341,7 @@
       <div>
         <div class="app-title">Ders Çalışma Planlayıcısı</div>
         <div id="activeProfileSummary"></div>
+        <div id="loginStatus" class="text-sm" style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;"></div>
       </div>
     </div>
     <div class="header-right">
@@ -3384,7 +3385,7 @@
     const authEmailInput  = document.getElementById("authEmail");
     const authPassInput   = document.getElementById("authPassword");
     const authErrorEl     = document.getElementById("authError");
-    const authUserInfoEl  = document.getElementById("authUserInfo");
+    const loginStatusEl  = document.getElementById("loginStatus");
     const btnLogin        = document.getElementById("btnLogin");
     const btnRegister     = document.getElementById("btnRegister");
     const btnLogout       = document.getElementById("btnLogout");
@@ -3467,7 +3468,7 @@
         authContainer.style.display = "none";
         appContainer.style.display  = "block";
         btnLogout.style.display     = "block";
-        authUserInfoEl.textContent  = user.email + " ile giriş yapıldı.";
+        loginStatusEl.textContent  = user.email + " ile giriş yapıldı.";
         try {
           await loadStateFromCloud();
         } catch (err) {
@@ -3477,7 +3478,7 @@
         appContainer.style.display  = "none";
         authContainer.style.display = "block";
         btnLogout.style.display     = "none";
-        authUserInfoEl.textContent  = "";
+        loginStatusEl.textContent  = "";
         authErrorEl.textContent     = "";
       }
     });
