@@ -326,7 +326,8 @@
     <button id="btnLogin" style="flex:1;">Giriş Yap</button>
     <button id="btnRegister" class="btn-ghost" style="flex:1;">Kayıt Ol</button>
   </div>
-  <button id="btnLogout" class="btn-ghost" style="margin-top:0.75rem;display:none;width:100%;">Çıkış Yap</button>
+  <button id="btnForgotPassword" class="btn-ghost" style="margin-top:0.5rem;width:100%;">Şifremi Unuttum</button>
+  <button id="btnLogout" class="btn-ghost" style="margin-top:0.5rem;display:none;width:100%;">Çıkış Yap</button>
   <p id="authError" style="color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></p>
 </div>
 
@@ -3388,6 +3389,7 @@
     const loginStatusEl  = document.getElementById("loginStatus");
     const btnLogin        = document.getElementById("btnLogin");
     const btnRegister     = document.getElementById("btnRegister");
+    const btnForgotPassword = document.getElementById("btnForgotPassword");
     const btnLogout       = document.getElementById("btnLogout");
     const btnCloudSave    = document.getElementById("btnCloudSave");
     const btnCloudLoad    = document.getElementById("btnCloudLoad");
@@ -3452,6 +3454,27 @@
             authPassInput.value
           );
         } catch (err) {
+          authErrorEl.textContent = err.message;
+        }
+      });
+    }
+
+
+    if (btnForgotPassword) {
+      btnForgotPassword.addEventListener("click", async () => {
+        authErrorEl.style.color = "#ef4444";
+        authErrorEl.textContent = "";
+        const email = authEmailInput.value.trim();
+        if (!email) {
+          authErrorEl.textContent = "Şifre sıfırlama için e-posta adresini yaz.";
+          return;
+        }
+        try {
+          await auth.sendPasswordResetEmail(email);
+          authErrorEl.style.color = "#16a34a";
+          authErrorEl.textContent = "Şifre sıfırlama bağlantısı e-posta adresine gönderildi.";
+        } catch (err) {
+          authErrorEl.style.color = "#ef4444";
           authErrorEl.textContent = err.message;
         }
       });
