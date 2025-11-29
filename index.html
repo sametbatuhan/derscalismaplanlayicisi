@@ -289,54 +289,48 @@
     }
   </style>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCLVZ-GbVVFVodsfdCtTfZPbuinlnI1PiY",
-      authDomain: "derscalismaplanlayicisi.firebaseapp.com",
-      projectId: "derscalismaplanlayicisi",
-      storageBucket: "derscalismaplanlayicisi.firebasestorage.app",
-      messagingSenderId: "234033292808",
-      appId: "1:234033292808:web:38870f41bb22d1118c13bd",
-      measurementId: "G-2HYM8ZEXZV"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db   = firebase.firestore();
-  </script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCLVZ-GbVVFVodsfdCtTfZPbuinlnI1PiY",
+    authDomain: "derscalismaplanlayicisi.firebaseapp.com",
+    projectId: "derscalismaplanlayicisi",
+    storageBucket: "derscalismaplanlayicisi.firebasestorage.app",
+    messagingSenderId: "234033292808",
+    appId: "1:234033292808:web:38870f41bb22d1118c13bd",
+    measurementId: "G-2HYM8ZEXZV"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+</script>
 
 </head>
 <body data-theme="light" data-view="desktop">
 
-  <!-- Firebase Auth Login -->
-  <div id="auth-container" style="max-width:420px;margin:1.5rem auto;padding:1.5rem;border-radius:12px;border:1px solid #e2e8f0;background:var(--bg-alt);box-shadow:var(--shadow-md);">
-    <h2 class="app-title" style="margin-bottom:0.5rem;">Ders Çalışma Planlayıcısı – Giriş</h2>
-    <p id="authUserInfo" class="text-sm text-muted" style="margin:0 0 0.75rem 0;"></p>
-
-    <div class="field-group">
-      <div class="field-label">E-posta</div>
-      <input type="email" id="authEmail" placeholder="ornek@mail.com">
-    </div>
-
-    <div class="field-group">
-      <div class="field-label">Şifre</div>
-      <input type="password" id="authPassword" placeholder="En az 6 karakter">
-    </div>
-
-    <div class="row" style="gap:0.5rem;">
-      <button id="btnLogin" style="flex:1;">Giriş Yap</button>
-      <button id="btnRegister" class="btn-ghost" style="flex:1;">Kayıt Ol</button>
-    </div>
-
-    <button id="btnLogout" class="btn-ghost" style="margin-top:0.75rem;display:none;width:100%;">Çıkış Yap</button>
-
-    <p id="authError" style="color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></p>
+<div id="auth-container" class="card" style="max-width:420px;margin:1.5rem auto;padding:1.5rem;border-radius:12px;">
+  <h2 class="app-title" style="margin-bottom:0.5rem;">Ders Çalışma Planlayıcısı – Giriş</h2>
+  <p id="authUserInfo" class="text-sm text-muted" style="margin:0 0 0.75rem 0;"></p>
+  <div class="field-group">
+    <div class="field-label">E-posta</div>
+    <input type="email" id="authEmail" placeholder="ornek@mail.com">
   </div>
+  <div class="field-group">
+    <div class="field-label">Şifre</div>
+    <input type="password" id="authPassword" placeholder="En az 6 karakter">
+  </div>
+  <div class="row" style="gap:0.5rem;">
+    <button id="btnLogin" style="flex:1;">Giriş Yap</button>
+    <button id="btnRegister" class="btn-ghost" style="flex:1;">Kayıt Ol</button>
+  </div>
+  <button id="btnLogout" class="btn-ghost" style="margin-top:0.75rem;display:none;width:100%;">Çıkış Yap</button>
+  <p id="authError" style="color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></p>
+</div>
 
-  <div id="app-container" style="display:none;">
+<div id="app-container" style="display:none;">
 <div id="app">
   <header class="app-header">
     <div class="header-left">
@@ -785,21 +779,19 @@
                 <button id="btnImportJsonTrigger" class="btn-danger" style="width:100%">📥 Yedekten Geri Yükle</button>
             </div>
           </div>
+          <div class="alert alert-danger mt-2">
+            <strong>Uyarı:</strong> JSON dosyasından geri yükleme yapıldığında mevcut tüm profiller silinir ve dosyadaki verilerle değiştirilir. Lütfen önce mevcut verini yedekle.
+          </div>
           <div class="row mt-2">
             <div class="col">
-              <button id="btnCloudSave" style="width:100%;">☁ Buluta Kaydet</button>
+              <button id="btnCloudSave" style="width:100%;">☁ Buluta Kaydet (Giriş gerekli)</button>
             </div>
             <div class="col">
               <button id="btnCloudLoad" style="width:100%;">☁ Buluttan Yükle</button>
             </div>
           </div>
-
           <div class="alert mt-2">
-            <strong>Not:</strong> Bulut yedek için önce üstteki giriş ekranından hesabınla giriş yapmalısın. Aynı hesapla farklı cihazdan giriş yaptığında planını buradan yükleyebilirsin.
-          </div>
-
-          <div class="alert alert-danger mt-2">
-            <strong>Uyarı:</strong> JSON dosyasından geri yükleme yapıldığında mevcut tüm profiller silinir ve dosyadaki verilerle değiştirilir. Lütfen önce mevcut verini yedekle.
+            <strong>Not:</strong> Bulut yedek için üstteki giriş bölümünden hesabınla giriş yapmalısın. Aynı hesapla farklı cihazdan giriş yaptığında planını buradan yükleyebilirsin.
           </div>
         </div>
       </section>
@@ -840,6 +832,22 @@
 
   let dailyCheckedIds = [];
   let currentCheckedDate = null;
+
+
+  // Tüm uygulama durumunu tek obje olarak döndür (buluta kaydetmek için)
+  function getPlannerState() {
+    return JSON.parse(JSON.stringify(state));
+  }
+
+  // Buluttan gelen durumu tüm uygulamaya uygula
+  function setPlannerState(newState) {
+    pushHistory();
+    Object.keys(state).forEach(k => { delete state[k]; });
+    Object.assign(state, newState);
+    saveState();
+    renderAll();
+  }
+
 
   function todayStr() {
     const t = new Date();
@@ -3357,20 +3365,7 @@
     updateUndoRedoUI();
   }
 
-  
-function getPlannerState() {
-  return JSON.parse(JSON.stringify(state));
-}
-
-function setPlannerState(newState) {
-  pushHistory();
-  Object.keys(state).forEach(k => { delete state[k]; });
-  Object.assign(state, newState);
-  saveState();
-  renderAll();
-}
-
-document.addEventListener("DOMContentLoaded",()=>{
+  document.addEventListener("DOMContentLoaded",()=>{
     const savedTheme=localStorage.getItem(THEME_KEY)||"light";
     setTheme(savedTheme);
     const savedView=localStorage.getItem(VIEW_KEY)||"desktop";
@@ -3383,7 +3378,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
 
     loadState();
-    // Firebase Auth & Cloud Sync
+    // --- Firebase Auth & Bulut Yedek Entegrasyonu ---
     const authContainer   = document.getElementById("auth-container");
     const appContainer    = document.getElementById("app-container");
     const authEmailInput  = document.getElementById("authEmail");
@@ -3397,10 +3392,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     const btnCloudLoad    = document.getElementById("btnCloudLoad");
 
     async function saveStateToCloud() {
-      if (!window.auth) { alert("Auth yüklenemedi."); return; }
       const user = auth.currentUser;
       if (!user) { alert("Önce giriş yap."); return; }
-
       const snapshot = getPlannerState();
       await db.collection("plans").doc(user.uid).set({
         data: snapshot,
@@ -3410,10 +3403,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
 
     async function loadStateFromCloud() {
-      if (!window.auth) { alert("Auth yüklenemedi."); return; }
       const user = auth.currentUser;
       if (!user) { alert("Önce giriş yap."); return; }
-
       const docRef  = db.collection("plans").doc(user.uid);
       const docSnap = await docRef.get();
       if (!docSnap.exists) {
@@ -3442,7 +3433,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         authErrorEl.textContent = "";
         try {
           await auth.createUserWithEmailAndPassword(
-            authEmailInput.value.trim(),
+            authEmailInput.value,
             authPassInput.value
           );
         } catch (err) {
@@ -3456,7 +3447,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         authErrorEl.textContent = "";
         try {
           await auth.signInWithEmailAndPassword(
-            authEmailInput.value.trim(),
+            authEmailInput.value,
             authPassInput.value
           );
         } catch (err) {
@@ -3471,27 +3462,25 @@ document.addEventListener("DOMContentLoaded",()=>{
       });
     }
 
-    if (auth) {
-      auth.onAuthStateChanged(async (user) => {
-        if (user) {
-          authContainer.style.display = "none";
-          appContainer.style.display  = "block";
-          authUserInfoEl.textContent  = user.email + " ile giriş yapıldı.";
-          btnLogout.style.display     = "block";
-          try {
-            await loadStateFromCloud();
-          } catch (err) {
-            console.error(err);
-          }
-        } else {
-          appContainer.style.display  = "none";
-          authContainer.style.display = "block";
-          authUserInfoEl.textContent  = "";
-          authErrorEl.textContent     = "";
-          btnLogout.style.display     = "none";
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        authContainer.style.display = "none";
+        appContainer.style.display  = "block";
+        btnLogout.style.display     = "block";
+        authUserInfoEl.textContent  = user.email + " ile giriş yapıldı.";
+        try {
+          await loadStateFromCloud();
+        } catch (err) {
+          console.error(err);
         }
-      });
-    }
+      } else {
+        appContainer.style.display  = "none";
+        authContainer.style.display = "block";
+        btnLogout.style.display     = "none";
+        authUserInfoEl.textContent  = "";
+        authErrorEl.textContent     = "";
+      }
+    });
 
 
 
