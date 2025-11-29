@@ -3469,11 +3469,8 @@
         appContainer.style.display  = "block";
         btnLogout.style.display     = "block";
         loginStatusEl.textContent  = user.email + " ile giriş yapıldı.";
-        try {
-          await loadStateFromCloud();
-        } catch (err) {
-          console.error(err);
-        }
+        // Not: Buluttan veriyi otomatik yüklemiyoruz.
+        // Kullanıcı isterse "Buluttan Yükle" butonuna basarak senkron edebilir.
       } else {
         appContainer.style.display  = "none";
         authContainer.style.display = "block";
