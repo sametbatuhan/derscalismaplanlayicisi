@@ -661,13 +661,17 @@
 
         <div class="card">
           <div class="card-header" style="background: var(--bg);">
-            <div class="card-title" style="color:var(--success-text);">Tamamlanan Videolar</div>
-            <div class="card-subtitle">Bitmiş videolar burada listelenir. (Düzenlemek için üzerine tıkla)</div>
+            <div>
+              <div class="card-title" style="color:var(--success-text);">Tamamlanan Videolar</div>
+              <div class="card-subtitle">Bitmiş videolar burada listelenir. (Düzenlemek için üzerine tıkla)</div>
+            </div>
+            <button id="btnBulkMoveCompleted" class="btn-ghost text-xs">Seçilenleri Sıraya Taşı</button>
           </div>
           <div class="table-container">
              <table>
               <thead>
                 <tr>
+                  <th style="width:30px;"><input type="checkbox" id="selectAllCompleted"></th>
                   <th style="width:40px;">#</th>
                   <th>Başlık</th>
                   <th>Ders</th>
@@ -1401,6 +1405,7 @@
             if (newOrderMap[v.id]!=null) v.order=newOrderMap[v.id];
          });
          saveState();
+         renderVideos(); // BUG FIX 1: Sıra numaralarını (index) güncellemek için tabloyu yeniden çiziyoruz.
       });
     });
 
@@ -1409,6 +1414,13 @@
       const tr = document.createElement("tr");
       tr.style.opacity = "0.7";
       tr.style.background = "#f0fff4";
+      tr.dataset.videoId = v.id;
+
+      const tdCheck = document.createElement("td");
+      const cbSel = document.createElement("input");
+      cbSel.type = "checkbox"; cbSel.className = "completed-video-selection";
+      cbSel.dataset.videoId = v.id;
+      tdCheck.appendChild(cbSel);
 
       const tdIdx = document.createElement("td");
       tdIdx.textContent = String(idx+1);
@@ -1464,9 +1476,18 @@
       });
       tdStatus.appendChild(btnUndoDone);
 
-      tr.append(tdIdx, tdTitle, tdSubj, tdTopic, tdRem, tdLink, tdStatus);
+      tr.append(tdCheck, tdIdx, tdTitle, tdSubj, tdTopic, tdRem, tdLink, tdStatus);
       completedBody.appendChild(tr);
     });
+
+    // Select All logic for completed
+    const selectAllCompleted = document.getElementById("selectAllCompleted");
+    if (selectAllCompleted) {
+        selectAllCompleted.checked = false;
+        selectAllCompleted.addEventListener("change", (e) => {
+            document.querySelectorAll(".completed-video-selection").forEach(cb => cb.checked = e.target.checked);
+        });
+    }
 
     const videoSummary = document.getElementById("videoSummary");
     const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
@@ -2858,6 +2879,7 @@
       
       v.remainingMinutes=0; 
       v.done=true;
+      v.speed=dailySpeed; // Hangi hızda izlendiğini kaydet
       v.completionDate = logDate; // Tamamlanma tarihini kaydet (Takvim detay için)
     });
 
@@ -3290,7 +3312,8 @@
           const completedVids = profile.videos.filter(v => v.done && v.completionDate === dateStr);
           let completedHtml = "";
           if (completedVids.length > 0) {
-              completedHtml = completedVids.map(v => `<div style="font-size:0.8rem;">✓ ${v.title}</div>`).join("");
+              // GÜNCELLEME: Video sürelerini ve hızlarını ekliyoruz
+              completedHtml = completedVids.map(v => `<div style="font-size:0.8rem;">✓ ${v.title} (${Math.ceil((v.rawMinutes || 0)/(v.speed||1))} dk @ ${v.speed||1}x)</div>`).join("");
           } else {
               completedHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Tamamlanan video yok.</div>";
           }
@@ -3300,7 +3323,8 @@
           if (planEntry && planEntry.videoIds && planEntry.videoIds.length) {
               const plannedVids = planEntry.videoIds.map(id => profile.videos.find(v => v.id === id)).filter(Boolean);
               if (plannedVids.length > 0) {
-                  plannedHtml = plannedVids.map(v => `<div style="font-size:0.8rem;">• ${v.title}</div>`).join("");
+                  // GÜNCELLEME: Video sürelerini ekliyoruz
+                  plannedHtml = plannedVids.map(v => `<div style="font-size:0.8rem;">• ${v.title} (${effectiveRemainingMinutes(v)} dk)</div>`).join("");
               } else {
                   plannedHtml = "<div style='font-size:0.8rem; color:var(--text-muted)'>Planlanan video yok.</div>";
               }
@@ -3335,6 +3359,58 @@
       });
       grid.appendChild(cell);
     }
+  }
+
+  // --- COMPLETED VIDEO BULK MOVE ---
+  function bulkMoveCompleted() {
+      const profile = getActiveProfile();
+      const selectedCheckboxes = document.querySelectorAll(".completed-video-selection:checked");
+      if (selectedCheckboxes.length === 0) {
+          alert("Lütfen önce listeden video seçin."); return;
+      }
+      
+      const targetIndexStr = prompt("Seçili videoları hangi sıranın üstüne taşımak istersiniz? (Örn: 8)");
+      if (targetIndexStr === null) return;
+      const targetIndex = parseInt(targetIndexStr, 10);
+      if (isNaN(targetIndex) || targetIndex < 1) {
+          alert("Geçersiz sıra numarası."); return;
+      }
+
+      pushHistory();
+      
+      const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.videoId);
+      let allVideos = [...profile.videos];
+      allVideos.sort((a,b) => (a.order || 0) - (b.order || 0));
+
+      const activeVideos = allVideos.filter(v => !v.done);
+      let completedVideos = allVideos.filter(v => v.done);
+
+      if (targetIndex > completedVideos.length + 1) {
+          alert("Girdiğiniz sıra numarası mevcut listeden büyük."); return;
+      }
+
+      // Extract items to be moved
+      const itemsToMove = completedVideos.filter(v => selectedIds.includes(v.id));
+      const remainingItems = completedVideos.filter(v => !selectedIds.includes(v.id));
+
+      // Build new order
+      const newCompletedList = [
+          ...remainingItems.slice(0, targetIndex - 1),
+          ...itemsToMove,
+          ...remainingItems.slice(targetIndex - 1)
+      ];
+
+      // Re-assign order numbers starting from 1 (or max active + 1)
+      const maxActiveOrder = activeVideos.reduce((m, v) => Math.max(m, v.order || 0), 0);
+      let currentOrder = maxActiveOrder + 1;
+
+      newCompletedList.forEach((v, i) => {
+          v.order = currentOrder++;
+      });
+
+      saveState();
+      renderVideos();
+      alert("Seçili videolar başarıyla taşındı.");
   }
 
   // --- NOTES PAGE LOGIC ---
@@ -3781,6 +3857,12 @@
 
     document.getElementById("btnUndo").addEventListener("click", performUndo);
     document.getElementById("btnRedo").addEventListener("click", performRedo);
+
+    // Completed Videos Bulk Move Listener
+    const btnBulkMove = document.getElementById("btnBulkMoveCompleted");
+    if (btnBulkMove) {
+        btnBulkMove.addEventListener("click", bulkMoveCompleted);
+    }
 
     renderAll();
   });
