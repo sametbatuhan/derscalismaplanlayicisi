@@ -1109,6 +1109,9 @@
     const prevState = historyStack.pop();
     Object.keys(state).forEach(k => delete state[k]);
     Object.assign(state, prevState);
+
+    // BUG FIX: Undo yapıldığında bekleme modu takılı kalmasın diye resetle
+    skipWaitMode = false;
     
     saveState(true); // true = skip pushing history inside saveState
     renderAll();
@@ -1124,6 +1127,9 @@
     Object.keys(state).forEach(k => delete state[k]);
     Object.assign(state, nextState);
     
+    // Redo yapıldığında da resetleyelim, garanti olsun
+    skipWaitMode = false;
+
     saveState(true);
     renderAll();
     updateUndoRedoUI();
@@ -1493,10 +1499,26 @@
 
     // Filtreleri UYGULAMIYORUZ. Ana listede hepsi gözükmeli.
     let allVideos = [...profile.videos];
-    allVideos.sort((a,b)=>(a.order||0)-(b.order||0));
+    
+    // Aktifler sıralı gelsin (normal sıra)
+    const activeVideos = allVideos.filter(v => !v.done).sort((a,b)=>(a.order||0)-(b.order||0));
 
-    const activeVideos = allVideos.filter(v => !v.done);
-    const completedVideos = allVideos.filter(v => v.done);
+    // BUG FIX: Tamamlananlar sıralaması GÜNCEL (Tarih bazlı, Yeni -> Eski)
+    const completedVideos = allVideos.filter(v => v.done).sort((a,b) => {
+        // Öncelik 1: Tamamlanma tarihi (Varsa)
+        if (a.completionDate && b.completionDate) {
+            // Tarih büyükse (yeni ise) önce gelsin (-1)
+            if (a.completionDate > b.completionDate) return -1;
+            if (a.completionDate < b.completionDate) return 1;
+        } 
+        else if (a.completionDate) { return -1; } // Sadece a'da tarih var -> a önce
+        else if (b.completionDate) { return 1; }  // Sadece b'de tarih var -> b önce
+        
+        // Öncelik 2: Tarihler eşitse veya yoksa -> Ekleme sırasının tersi (Last in First out)
+        // Order genelde artan sayı olduğu için, tersi (b - a) olur.
+        return (b.order || 0) - (a.order || 0);
+    });
+
 
     // Aktif Videolar Render
     activeVideos.forEach((v,idx)=>{
@@ -1723,10 +1745,29 @@
                  if(rec.speedUsage[usedSpeed].count > 0) rec.speedUsage[usedSpeed].count -= 1;
              }
              
-             // Floating point fix for display
+             // Floating point fix for display force zero
              if (rec.watchedMinutes <= 0.1) rec.watchedMinutes = 0;
+
+             // BUG FIX: TAKVİM YEŞİL KALMA SORUNU ÇÖZÜMÜ
+             // Gün tamamen boşaldıysa (süre 0 ve soru yok) günü istatistikten sil
+             const qTotal = rec.questionsTotal || 0;
+             // Sadece NOT kontrolü: Eğer not varsa silmeyelim, ama süre 0 olduğu için yeşil renk kalkacaktır.
+             // Ancak kullanıcı "bug oluşuyor" dediği için muhtemelen yeşil kalıyor. Yeşil kalma şartı watchedMinutes > 0.
+             // Biz watchedMinutes'i 0 yaptık. Eğer kayıt silinirse garanti olur.
+             
+             // Not var mı kontrolü (DayMeta'dan)
+             const hasNotes = profile.dayMeta[v.completionDate] && 
+                              (profile.dayMeta[v.completionDate].generalNote || profile.dayMeta[v.completionDate].note);
+
+             const isEmptyDay = (rec.watchedMinutes <= 0.01) && (qTotal === 0);
+             
+             // Eğer gün boşsa ve not yoksa tamamen sil. Not varsa silme (not görünsün) ama süre 0 olduğu için renk mavi/gri olsun.
+             if (isEmptyDay && !hasNotes) {
+                 delete profile.stats.perDay[v.completionDate];
+             }
           }
-          v.completionDate = null;
+          
+          v.completionDate = null; // Tarihi sıfırla
           // BUG FIX END
 
           v.done = false;
@@ -1736,7 +1777,7 @@
           renderVideos();
           renderProfileSelector();
           renderStats(); // Stats'ı da yenile
-          renderCalendar(); // Takvimi de yenile
+          renderCalendar(); // Takvimi de yenile (rengi düzeltmek için)
           renderCompletionEstimates();
       });
       tdStatus.appendChild(btnUndoDone);
