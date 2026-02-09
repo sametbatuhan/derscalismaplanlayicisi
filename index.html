@@ -119,6 +119,14 @@
     button.btn-danger:hover { background: var(--danger-text); }
     button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
+    /* AI Button & Styles */
+    .btn-ai { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; }
+    .btn-ai:hover { background: linear-gradient(135deg, #4f46e5, #7c3aed); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); transform: translateY(-1px); }
+    .ai-response-box { background: #fdf4ff; border: 1px solid #e879f9; border-radius: 8px; padding: 1rem; margin-top: 1rem; font-size: 0.9rem; white-space: pre-wrap; color: #4a044e; display: none; line-height: 1.6; }
+    body[data-theme="dark"] .ai-response-box { background: #4a044e; border-color: #86198f; color: #fdf4ff; }
+    .ai-loading-spinner { width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 0.5rem; display:none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* Layout Content */
     .layout { display: flex; flex: 1; overflow: hidden; }
     nav.sidebar {
@@ -412,6 +420,7 @@
       <div>
         <div class="small-label">Ayarlar</div>
         <div class="row" style="gap:0.5rem;">
+          <button id="btnSetApiKey" class="btn-ghost" title="Gemini API Anahtarı Gir">🔑 API</button>
           <button id="btnToggleTheme" class="btn-ghost">Açık/Koyu</button>
           <select id="viewModeSelect" style="width:auto;">
             <option value="desktop">Masaüstü</option>
@@ -958,6 +967,9 @@
         <div class="modal-body">
             <img id="wqModalImage" src="" class="modal-image" style="display:none;">
             <div id="wqModalText" style="width:100%; white-space: pre-wrap; margin-bottom:1rem; color:#fff; font-size:1.1rem; line-height:1.6; display:none;"></div>
+            
+            <!-- AI Response Area -->
+            <div id="wqAiResponse" class="ai-response-box"></div>
         </div>
         <div class="modal-details">
             <div class="row" style="margin-bottom:0.5rem;">
@@ -976,7 +988,11 @@
             </div>
             <div class="flex-between">
                 <span class="text-xs text-muted" id="wqModalDate"></span>
-                <div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                     <button id="btnSolveWithAI" class="btn-ai text-sm">
+                        <span id="wqAiSpinner" class="ai-loading-spinner"></span>
+                        ✨ Yapay Zeka ile Çözümle
+                     </button>
                      <button id="btnSaveWqNote" style="padding:0.4rem 1rem;">Notu Kaydet</button>
                      <button id="btnDeleteWq" class="btn-ghost btn-danger" style="padding:0.4rem 1rem;">Soruyu Sil</button>
                 </div>
@@ -991,6 +1007,9 @@
   const STORAGE_KEY = "studyPlanner_v1";
   const THEME_KEY = "studyPlanner_theme";
   const VIEW_KEY = "studyPlanner_view";
+  
+  // Gemini API Key dynamic loader
+  let geminiApiKey = localStorage.getItem("studyPlanner_apiKey") || "";
 
   // UNDO/REDO VARS
   const historyStack = [];
@@ -1090,6 +1109,51 @@
     const base = v.remainingMinutes || 0;
     const sp = v.speed && v.speed > 0 ? v.speed : 1;
     return Math.ceil(base / sp);
+  }
+
+  // --- GEMINI API HELPER ---
+  async function callGeminiAPI(prompt, imageBase64 = null) {
+      if (!geminiApiKey) {
+          alert("Lütfen önce Ayarlar kısmından Gemini API Anahtarını giriniz (🔑 API butonu).");
+          throw new Error("API Anahtarı eksik");
+      }
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+      
+      const parts = [{ text: prompt }];
+      
+      if (imageBase64) {
+          // Clean base64 string if it contains header
+          const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+          parts.push({
+              inlineData: {
+                  mimeType: "image/png", // Sending as png is usually safe for base64
+                  data: cleanBase64
+              }
+          });
+      }
+
+      const payload = {
+          contents: [{ parts: parts }]
+      };
+
+      try {
+          const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+              const err = await response.json();
+              throw new Error(err.error?.message || "API Hatası");
+          }
+
+          const data = await response.json();
+          return data.candidates?.[0]?.content?.parts?.[0]?.text || "Yanıt alınamadı.";
+      } catch (error) {
+          console.error("Gemini API Error:", error);
+          throw error;
+      }
   }
 
   // --- UNDO / REDO LOGIC ---
@@ -2589,8 +2653,15 @@
         </div>
         <div class="col" style="flex:1;">
           <div class="field-group">
-            <div class="field-label">Genel Not</div>
+            <div class="field-label" style="display:flex; justify-content:space-between; align-items:center;">
+                Genel Not
+                <button id="btnDailyAI" class="btn-ai text-xs" style="padding:0.2rem 0.6rem;">
+                    <span id="dailyAiSpinner" class="ai-loading-spinner"></span>
+                    ✨ AI Koç Değerlendirmesi
+                </button>
+            </div>
             <textarea id="dayGeneralNoteInput" rows="4" placeholder="Bugün nasıl geçti?" style="width:100%; min-height:160px; resize:vertical; overflow-y:auto; line-height:1.5; padding:0.75rem;">${generalNote}</textarea>
+            <div id="dailyAiResponse" class="ai-response-box"></div>
           </div>
           <div class="field-group">
             <div class="field-label">Ders Notları & Sorular</div>
@@ -2680,6 +2751,69 @@
           autoResizeTextArea(generalNoteEl);
         }
       });
+    }
+
+    // AI Daily Evaluation Button Logic
+    const btnDailyAI = document.getElementById("btnDailyAI");
+    if (btnDailyAI) {
+        btnDailyAI.addEventListener("click", async () => {
+            const spinner = document.getElementById("dailyAiSpinner");
+            const responseBox = document.getElementById("dailyAiResponse");
+            
+            // Gather Data
+            const usedMins = computeCheckedRealMinutes();
+            const goalMins = dailyGoal;
+            const noteContent = generalNoteEl.value;
+            
+            // Gather Subject Performance
+            let subjectsInfo = "";
+            container.querySelectorAll(".per-subject-row").forEach(row => {
+               const sName = row.dataset.subject;
+               const c = row.querySelector(".sub-correct-input").value;
+               const w = row.querySelector(".sub-wrong-input").value;
+               const n = row.querySelector(".sub-note-input").value;
+               if (parseInt(c)>0 || parseInt(w)>0 || n) {
+                   subjectsInfo += `- ${sName}: ${c} Doğru, ${w} Yanlış. Not: ${n}\n`;
+               }
+            });
+
+            // Gather Completed Videos
+            let completedVideos = [];
+            dayCheckboxes.forEach(cb => {
+                if(cb.checked) {
+                    const v = videosMap[cb.dataset.videoId];
+                    if(v) completedVideos.push(v.title);
+                }
+            });
+
+            const prompt = `Sen yardımsever ve motive edici bir öğrenci koçusun. Öğrencinin bugünkü performansı aşağıdadır:
+            - Hedef Süre: ${goalMins} dk
+            - Çalışılan Süre: ${Math.round(usedMins)} dk
+            - Tamamlanan Videolar: ${completedVideos.join(", ") || "Yok"}
+            - Ders Bazlı Performans:
+            ${subjectsInfo || "Veri girilmedi."}
+            - Öğrencinin Genel Notu: "${noteContent || "Yok"}"
+
+            Lütfen öğrenciye Türkçe olarak motive edici, kısa bir değerlendirme yap (maksimum 3-4 cümle). 
+            Neyi iyi yaptığını vurgula ve yarına dair spesifik, uygulanabilir küçük bir tavsiye ver.`;
+
+            // UI Loading State
+            spinner.style.display = "inline-block";
+            btnDailyAI.disabled = true;
+            responseBox.style.display = "none";
+            responseBox.textContent = "";
+
+            try {
+                const aiResponse = await callGeminiAPI(prompt);
+                responseBox.textContent = "🤖 Koçun Tavsiyesi:\n" + aiResponse;
+                responseBox.style.display = "block";
+            } catch (err) {
+                alert("AI Hatası: " + err.message);
+            } finally {
+                spinner.style.display = "none";
+                btnDailyAI.disabled = false;
+            }
+        });
     }
 
     // Ders notu alanları (sub-note-input) için otomatik büyüme ve Shift+Enter desteği
@@ -3644,6 +3778,12 @@
       const modal = document.getElementById("wq-modal");
       const img = document.getElementById("wqModalImage");
       const text = document.getElementById("wqModalText");
+      const aiResponseBox = document.getElementById("wqAiResponse");
+      const aiBtn = document.getElementById("btnSolveWithAI");
+      const aiSpinner = document.getElementById("wqAiSpinner");
+      
+      aiResponseBox.style.display = "none";
+      aiResponseBox.textContent = "";
       
       if (q.image) {
           img.src = q.image;
@@ -3660,6 +3800,27 @@
       document.getElementById("wqModalNote").value = q.note || "";
       document.getElementById("wqModalDate").textContent = "Eklendi: " + (q.date || "-");
       
+      // AI Solve Logic
+      aiBtn.onclick = async () => {
+          aiSpinner.style.display = "inline-block";
+          aiBtn.disabled = true;
+          aiResponseBox.style.display = "none";
+          
+          const prompt = `Aşağıdaki soru, öğrencinin '${q.subject || "Genel"}' dersinde yanlış yaptığı bir sorudur. Soru metni: "${q.text || "Resimdeki soru"}". Konu: ${q.title || "Belirtilmemiş"}. 
+          Lütfen bu sorunun çözümünü adım adım ve anlaşılır bir şekilde Türkçe anlat. Ayrıca bu konuyu kısaca özetle ve benzer hataları yapmaması için bir ipucu ver.`;
+          
+          try {
+              const aiText = await callGeminiAPI(prompt, q.image);
+              aiResponseBox.textContent = "🤖 Yapay Zeka Çözümü:\n" + aiText;
+              aiResponseBox.style.display = "block";
+          } catch (err) {
+              alert("AI Hatası: " + err.message);
+          } finally {
+              aiSpinner.style.display = "none";
+              aiBtn.disabled = false;
+          }
+      };
+
       // Save Button Context
       const btnSave = document.getElementById("btnSaveWqNote");
       btnSave.onclick = () => {
@@ -4541,6 +4702,19 @@
     const btnBulkMoveActive = document.getElementById("btnBulkMoveActive");
     if (btnBulkMoveActive) {
         btnBulkMoveActive.addEventListener("click", bulkMoveActive);
+    }
+    
+    // NEW: API Key Button Listener
+    const btnSetApiKey = document.getElementById("btnSetApiKey");
+    if (btnSetApiKey) {
+        btnSetApiKey.addEventListener("click", () => {
+            const input = prompt("Gemini API Anahtarınızı yapıştırın:", geminiApiKey);
+            if (input !== null) {
+                geminiApiKey = input.trim();
+                localStorage.setItem("studyPlanner_apiKey", geminiApiKey);
+                alert("API Anahtarı kaydedildi. Yapay zeka özelliklerini kullanabilirsiniz.");
+            }
+        });
     }
     
     // WQ Listeners
