@@ -636,13 +636,17 @@
 
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Aktif Video Listesi</div>
-            <div class="card-subtitle">Henüz bitmemiş, planlanacak videolar. Sıralamayı değiştirmek için sürükle-bırak yapabilirsin.</div>
+            <div>
+              <div class="card-title">Aktif Video Listesi</div>
+              <div class="card-subtitle">Henüz bitmemiş, planlanacak videolar. Sıralamayı değiştirmek için sürükle-bırak yapabilirsin.</div>
+            </div>
+            <button id="btnBulkMoveActive" class="btn-ghost text-xs">Seçilenleri Sıraya Taşı</button>
           </div>
           <div class="table-container">
             <table>
               <thead>
                 <tr>
+                  <th style="width:30px;"><input type="checkbox" id="selectAllActive"></th>
                   <th style="width:40px;">#</th>
                   <th>Başlık</th>
                   <th>Ders</th>
@@ -1278,6 +1282,13 @@
       tr.setAttribute("draggable","true");
       tr.dataset.videoId = v.id;
 
+      // Checkbox for bulk move (NEW)
+      const tdCheck = document.createElement("td");
+      const cbSel = document.createElement("input");
+      cbSel.type = "checkbox"; cbSel.className = "active-video-selection";
+      cbSel.dataset.videoId = v.id;
+      tdCheck.appendChild(cbSel);
+
       const tdIdx = document.createElement("td");
       tdIdx.textContent = String(idx+1);
 
@@ -1370,9 +1381,19 @@
       });
       tdActions.appendChild(btnDel);
 
-      tr.append(tdIdx,tdTitle,tdSubj,tdTopic,tdSpeed,tdRem,tdDone,tdLink,tdActions);
+      tr.append(tdCheck, tdIdx,tdTitle,tdSubj,tdTopic,tdSpeed,tdRem,tdDone,tdLink,tdActions);
       activeBody.appendChild(tr);
     });
+
+    // Select All logic for Active Videos (NEW)
+    const selectAllActive = document.getElementById("selectAllActive");
+    if (selectAllActive) {
+        selectAllActive.checked = false;
+        selectAllActive.addEventListener("change", (e) => {
+            document.querySelectorAll(".active-video-selection").forEach(cb => cb.checked = e.target.checked);
+        });
+    }
+
 
     // Drag-drop for Active Videos
     let draggedId=null;
@@ -1466,12 +1487,34 @@
       btnUndoDone.style.marginLeft="0.5rem";
       btnUndoDone.addEventListener("click", () => {
           pushHistory();
+          // BUG FIX START: Geri alırken istatistiklerden de düş
+          if (v.completionDate && profile.stats && profile.stats.perDay && profile.stats.perDay[v.completionDate]) {
+             const rec = profile.stats.perDay[v.completionDate];
+             const usedSpeed = v.speed || 1;
+             const realVal = (v.rawMinutes || v.remainingMinutes || 0) / usedSpeed;
+             
+             if (rec.watchedMinutes >= realVal) rec.watchedMinutes -= realVal;
+             
+             // Speed usage cleanup (approximate)
+             if (rec.speedUsage && rec.speedUsage[usedSpeed]) {
+                 if(rec.speedUsage[usedSpeed].minutes >= realVal) rec.speedUsage[usedSpeed].minutes -= realVal;
+                 if(rec.speedUsage[usedSpeed].count > 0) rec.speedUsage[usedSpeed].count -= 1;
+             }
+             
+             // Floating point fix for display
+             if (rec.watchedMinutes <= 0.1) rec.watchedMinutes = 0;
+          }
+          v.completionDate = null;
+          // BUG FIX END
+
           v.done = false;
           v.remainingMinutes = v.rawMinutes || 45; // Default reset
           saveState();
           regeneratePlan(profile);
           renderVideos();
           renderProfileSelector();
+          renderStats(); // Stats'ı da yenile
+          renderCalendar(); // Takvimi de yenile
           renderCompletionEstimates();
       });
       tdStatus.appendChild(btnUndoDone);
@@ -3361,7 +3404,7 @@
     }
   }
 
-  // --- COMPLETED VIDEO BULK MOVE ---
+  // --- BULK MOVE FUNCTIONALITY ---
   function bulkMoveCompleted() {
       const profile = getActiveProfile();
       const selectedCheckboxes = document.querySelectorAll(".completed-video-selection:checked");
@@ -3412,6 +3455,62 @@
       renderVideos();
       alert("Seçili videolar başarıyla taşındı.");
   }
+
+  function bulkMoveActive() {
+      const profile = getActiveProfile();
+      const selectedCheckboxes = document.querySelectorAll(".active-video-selection:checked");
+      if (selectedCheckboxes.length === 0) {
+          alert("Lütfen önce listeden video seçin."); return;
+      }
+      
+      const targetIndexStr = prompt("Seçili videoları hangi sıranın üstüne taşımak istersiniz? (Örn: 8)");
+      if (targetIndexStr === null) return;
+      const targetIndex = parseInt(targetIndexStr, 10);
+      if (isNaN(targetIndex) || targetIndex < 1) {
+          alert("Geçersiz sıra numarası."); return;
+      }
+
+      pushHistory();
+      
+      const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.videoId);
+      let allVideos = [...profile.videos];
+      allVideos.sort((a,b) => (a.order || 0) - (b.order || 0));
+
+      const activeVideos = allVideos.filter(v => !v.done);
+      const completedVideos = allVideos.filter(v => v.done);
+
+      if (targetIndex > activeVideos.length + 1) {
+          alert("Girdiğiniz sıra numarası mevcut listeden büyük."); return;
+      }
+
+      // Extract items to be moved
+      const itemsToMove = activeVideos.filter(v => selectedIds.includes(v.id));
+      const remainingItems = activeVideos.filter(v => !selectedIds.includes(v.id));
+
+      // Build new order
+      const newActiveList = [
+          ...remainingItems.slice(0, targetIndex - 1),
+          ...itemsToMove,
+          ...remainingItems.slice(targetIndex - 1)
+      ];
+
+      // Re-assign order numbers starting from 1
+      let currentOrder = 1;
+      newActiveList.forEach(v => {
+          v.order = currentOrder++;
+      });
+      // Continue numbering for completed videos to keep order integrity
+      completedVideos.forEach(v => {
+          v.order = currentOrder++;
+      });
+
+      saveState();
+      regeneratePlan(profile); // Plan değişeceği için
+      renderVideos();
+      renderDailyPlan();
+      alert("Seçili videolar başarıyla taşındı.");
+  }
+
 
   // --- NOTES PAGE LOGIC ---
   function renderNotesPage() {
@@ -3862,6 +3961,11 @@
     const btnBulkMove = document.getElementById("btnBulkMoveCompleted");
     if (btnBulkMove) {
         btnBulkMove.addEventListener("click", bulkMoveCompleted);
+    }
+    // Active Videos Bulk Move Listener (NEW)
+    const btnBulkMoveActive = document.getElementById("btnBulkMoveActive");
+    if (btnBulkMoveActive) {
+        btnBulkMoveActive.addEventListener("click", bulkMoveActive);
     }
 
     renderAll();
