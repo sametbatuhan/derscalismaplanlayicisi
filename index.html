@@ -569,14 +569,6 @@
     </div>
     <div class="header-right">
       <div>
-        <div class="small-label">Profil</div>
-        <div class="row" style="gap:0.5rem; align-items:center;">
-          <select id="profileSelect" style="width: auto;"></select>
-          <button id="btnAddProfile" class="btn-ghost" title="Yeni Profil" style="padding:0.4rem 0.8rem">+</button>
-          <button id="btnDeleteProfile" class="btn-ghost" title="Profili Sil" style="padding:0.4rem 0.8rem">Sil</button>
-        </div>
-      </div>
-      <div>
         <div class="small-label">Ayarlar</div>
         <div class="row" style="gap:0.5rem;">
           <button id="btnSetApiKey" class="btn-ghost" title="Gemini API Anahtarı Gir">🔑 API</button>
@@ -1105,6 +1097,24 @@
 
       <!-- YEDEKLEME -->
       <section id="page-backup" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Profil Yönetimi</div>
+              <div class="card-subtitle">Profillerin arasında geçiş yap, yeni profil oluştur veya profil ismini değiştir.</div>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Aktif Profil</div>
+            <div class="row" style="gap:0.5rem; align-items:center;">
+              <select id="profileSelect" style="flex:1;"></select>
+              <button id="btnRenameProfile" class="btn-ghost" title="Profil İsmini Değiştir" style="padding:0.5rem 1rem">✏️ İsim Değiştir</button>
+              <button id="btnAddProfile" class="btn-ghost" title="Yeni Profil" style="padding:0.5rem 1rem">+ Yeni Profil</button>
+              <button id="btnDeleteProfile" class="btn-danger" title="Profili Sil" style="padding:0.5rem 1rem">🗑️ Sil</button>
+            </div>
+          </div>
+        </div>
+        
         <div class="card">
           <div class="card-header">
             <div>
@@ -1658,8 +1668,7 @@
     const summaryEl = document.getElementById("activeProfileSummary");
     const activeVideos = profile.videos.filter(v=>!v.done);
     const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
-    summaryEl.textContent =
-      `${profile.name}: ${activeVideos.length} aktif video · Kalan: ${remainingReal} dk`;
+    summaryEl.textContent = `${activeVideos.length} video · ${remainingReal} dk`;
 
     renderStreak(profile);
   }
@@ -5419,6 +5428,19 @@ function makeDraggable(element, handle) {
     });
     document.getElementById("btnAddProfile").addEventListener("click",addProfile);
     document.getElementById("btnDeleteProfile").addEventListener("click",deleteProfile);
+    document.getElementById("btnRenameProfile").addEventListener("click", () => {
+      const profile = getActiveProfile();
+      const newName = prompt("Yeni profil ismi:", profile.name);
+      if (!newName || newName.trim() === "") return;
+      if (state.profiles.some(p => p.id !== profile.id && p.name === newName.trim())) {
+        alert("Bu isimde bir profil zaten var!");
+        return;
+      }
+      pushHistory();
+      profile.name = newName.trim();
+      saveState();
+      renderAll();
+    });
 
     document.getElementById("filterSubject").addEventListener("change",(e)=>{
       state.ui.filters.subject=e.target.value; state.ui.filters.topic="Hepsi";
