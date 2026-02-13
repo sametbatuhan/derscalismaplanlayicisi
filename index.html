@@ -98,7 +98,9 @@
     .header-left, .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
     .app-title { font-weight: 700; font-size: 1.2rem; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
     .small-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
-    #activeProfileSummary { font-size: 0.8rem; color: var(--text-muted); background: var(--bg); padding: 0.2rem 0.6rem; border-radius: var(--radius-full); border: 1px solid var(--border); }
+    #activeProfileSummary { font-size: 0.8rem; color: var(--text-muted); background: var(--bg); padding: 0.2rem 0.6rem; border-radius: var(--radius-full); border: 1px solid var(--border);width: fit-content; 
+  display: inline-block;
+}
 
     /* Streak Badge */
     .streak-badge {
@@ -1668,7 +1670,7 @@
     const summaryEl = document.getElementById("activeProfileSummary");
     const activeVideos = profile.videos.filter(v=>!v.done);
     const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
-    summaryEl.textContent = `${activeVideos.length} video · ${remainingReal} dk`;
+    summaryEl.textContent = `${activeVideos.length} aktif video · ${remainingReal} dakika`;
 
     renderStreak(profile);
   }
