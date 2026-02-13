@@ -987,11 +987,11 @@
             <div class="row" style="margin-bottom:0.5rem;">
                 <div class="col">
                     <div class="field-label">Başlık</div>
-                    <input type="text" id="wqModalTitle" readonly style="background:#eee;">
+                    <input type="text" id="wqModalTitle" placeholder="Soru başlığı...">
                 </div>
                 <div class="col">
                     <div class="field-label">Konu / Etiket</div>
-                    <input type="text" id="wqModalSubject" readonly style="background:#eee;">
+                    <input type="text" id="wqModalSubject" placeholder="Konu etiketi...">
                 </div>
             </div>
             <div class="field-group">
@@ -3857,9 +3857,20 @@
       const btnSave = document.getElementById("btnSaveWqNote");
       btnSave.onclick = () => {
           pushHistory();
+          
+          // Notu, Başlığı ve Konuyu alıp sisteme kaydet
           q.note = document.getElementById("wqModalNote").value;
+          q.title = document.getElementById("wqModalTitle").value;
+          q.subject = document.getElementById("wqModalSubject").value;
+          
           saveState();
-          alert("Not kaydedildi.");
+          
+          // Arka plandaki listeyi yeni isme göre güncelle
+          if (!wqShuffleActive) { 
+              renderWqList(currentWqFolder); 
+          }
+          
+          alert("Değişiklikler başarıyla kaydedildi.");
       };
       
       // Delete Button Context
