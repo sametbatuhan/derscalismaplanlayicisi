@@ -7,9 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <!-- Cropper.js for Image Editing -->
+  
+  <!-- Cropper.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  
+  <!-- PDF & Chart Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
     :root {
@@ -417,12 +423,37 @@
     body[data-view="mobile"] #pomodoroWidget { bottom: 70px; right: 10px; width: 220px; }
 
 
-@media (max-width: 768px) {
+    @media (max-width: 768px) {
       body[data-view="desktop"] .layout { flex-direction: column; }
       nav.sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; overflow-x: auto; padding: 0.5rem; flex-shrink: 0; }
       .sidebar-section-title { display: none; }
       .sidebar button { width: auto; white-space: nowrap; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
     }
+
+    /* PDF Template Styles */
+    #pdf-export-container {
+      position: absolute; top: -9999px; left: -9999px;
+      width: 794px; /* A4 width in pixels approx 96DPI */
+      min-height: 1123px;
+      background: white; color: black;
+      font-family: 'Inter', sans-serif;
+      padding: 40px; box-sizing: border-box;
+    }
+    .pdf-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+    .pdf-title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+    .pdf-subtitle { font-size: 14px; margin-top: 5px; color: #555; }
+    .pdf-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+    .pdf-day-card {
+        width: calc(33.33% - 14px); /* 3 columns */
+        border: 1px solid #ccc; border-radius: 8px; padding: 10px;
+        box-sizing: border-box; background: #f9f9f9;
+        display: flex; flex-direction: column;
+    }
+    .pdf-day-header { font-weight: bold; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 8px; text-align: center; background: #eee; border-radius: 4px; padding: 5px;}
+    .pdf-task-item { font-size: 11px; margin-bottom: 4px; display: flex; gap: 5px; align-items: flex-start; line-height: 1.3;}
+    .pdf-checkbox { width: 12px; height: 12px; border: 1px solid #333; display: inline-block; flex-shrink: 0; border-radius: 2px; }
+    
+    .chart-container { position: relative; height: 300px; width: 100%; margin-top: 1rem; }
   </style>
 
 <!-- Firebase SDK -->
@@ -555,7 +586,12 @@
                   <div class="card-title">Günlük Plan</div>
                   <div class="card-subtitle">Bugünün hedefleri, videoları ve notları</div>
                 </div>
-                <div id="dailyPlanHeaderInfo" class="pill"></div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button id="btnDownloadWeeklyPdf" class="btn-ghost" title="Haftalık Programı PDF İndir" style="font-size:0.8rem; padding:0.3rem 0.8rem;">
+                        📄 Haftalık Programı İndir (PDF)
+                    </button>
+                    <div id="dailyPlanHeaderInfo" class="pill"></div>
+                </div>
               </div>
               <div id="dailyPlanContent"></div>
             </div>
@@ -937,6 +973,18 @@
           <div class="stat-grid" id="statsOverview"></div>
         </div>
 
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">🧠 Eksik Konu Analizi (Radar Grafiği)</div>
+                    <div class="card-subtitle">Hangi derste ne kadar yanlış yaptığının görsel analizi</div>
+                </div>
+            </div>
+            <div class="chart-container" style="position: relative; height:300px; width:100%;">
+                <canvas id="subjectRadarChart"></canvas>
+            </div>
+        </div>
+
         <div class="row">
           <div class="col">
              <div class="card">
@@ -1106,7 +1154,7 @@
   <!-- POMODORO WIDGET -->
   <div id="pomodoroWidget">
      <div class="pomo-header" id="pomoHeader">
-         <span class="pomo-title-text">🍅 Focus Mode</span>
+         <span class="pomo-title-text">🍅 Pomodoro</span>
          <span class="pomo-mini-display">25:00</span>
          <span id="pomoToggleIcon">_</span>
      </div>
@@ -1131,6 +1179,15 @@
              <button id="btnPomoReset" class="btn-ghost" style="padding:0.4rem 1rem;">Sıfırla</button>
          </div>
      </div>
+  </div>
+  
+  <!-- PDF GENERATION HIDDEN CONTAINER -->
+  <div id="pdf-export-container">
+      <div class="pdf-header">
+          <div class="pdf-title">Haftalık Çalışma Programı</div>
+          <div class="pdf-subtitle" id="pdfDateRange"></div>
+      </div>
+      <div class="pdf-grid" id="pdfGrid"></div>
   </div>
   
 </div>
@@ -1165,6 +1222,9 @@
   let pomoTimeLeft = 25 * 60;
   let pomoIsRunning = false;
   let pomoMode = "work"; // work, break
+  
+  // CHART DEĞİŞKENİ
+  let radarChartInstance = null;
 
   function uuid() {
     return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -2947,6 +3007,12 @@
             deferVideo(vid);
         });
     });
+    
+    // NEW: PDF Button Listener
+    const btnPdf = document.getElementById("btnDownloadWeeklyPdf");
+    if(btnPdf) {
+        btnPdf.addEventListener("click", generateWeeklyPdf);
+    }
 
     const dayCheckboxes = container.querySelectorAll(".day-video-checkbox");
     const daySpeedSelects = container.querySelectorAll(".day-video-speed-select");
@@ -3407,6 +3473,74 @@
       }
   }
 
+  function showOtherDayDetail(dateStr) {
+    const profile = getActiveProfile();
+    const panel = document.getElementById("otherDayDetailPanel");
+    if (!panel) return;
+    const entry = (profile.plan||{})[dateStr];
+    const videosMap={}; profile.videos.forEach(v=>{videosMap[v.id]=v;});
+    if (!entry || !entry.videoIds || !entry.videoIds.length) {
+      panel.innerHTML = `<div class="text-xs text-muted">${formatDate(dateStr)} için planlı video yok.</div>`;
+      return;
+    }
+    const rows = entry.videoIds.map(id=>{
+      const v=videosMap[id]; if (!v) return "";
+      const dur=effectiveRemainingMinutes(v);
+      return `
+        <tr>
+          <td><input type="checkbox" class="other-day-video-checkbox" data-from-date="${dateStr}" data-video-id="${id}"></td>
+          <td>${v.title||"(başlıksız)"}</td>
+          <td>${dur}</td>
+        </tr>`;
+    }).join("");
+    panel.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">${formatDate(dateStr)} Videoları</div>
+        <div class="table-container" style="max-height:160px;margin-top:0.5rem;">
+          <table>
+            <thead><tr><th style="width:40px;">Seç</th><th>Video</th><th style="width:50px;">Dk</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn-ghost text-xs" id="btnMoveSelectedFromOtherDay" data-from-date="${dateStr}">Seçilenleri BUGÜNE Taşı</button>
+        </div>
+      </div>`;
+    const btnMove = document.getElementById("btnMoveSelectedFromOtherDay");
+    if (btnMove) {
+      btnMove.addEventListener("click",()=>{
+        const fromDate=btnMove.dataset.fromDate;
+        const checkboxes = panel.querySelectorAll(".other-day-video-checkbox");
+        const ids = Array.from(checkboxes).filter(cb=>cb.checked).map(cb=>cb.dataset.videoId);
+        if (!ids.length) { alert("Önce en az bir video seç."); return; }
+        moveSelectedVideosToToday(fromDate, ids);
+      });
+    }
+  }
+
+  function moveSelectedVideosToToday(fromDate, videoIds) {
+    pushHistory();
+    const profile = getActiveProfile();
+    const targetDate = profile.currentPlanStart || todayStr();
+
+    const futureEntry = (profile.plan||{})[fromDate];
+    if (!futureEntry) return;
+
+    futureEntry.videoIds = futureEntry.videoIds.filter(id => !videoIds.includes(id));
+    if (futureEntry.videoIds.length === 0) {
+      delete profile.plan[fromDate];
+    }
+
+    if (!profile.plan[targetDate]) {
+      profile.plan[targetDate] = { videoIds: [] };
+    }
+    profile.plan[targetDate].videoIds.push(...videoIds);
+
+    saveState();
+    renderDailyPlan();
+    alert("Videolar bugünün planına taşındı. Vazgeçmek istersen yanındaki 'Geri Gönder' butonunu kullanabilirsin.");
+  }
+
   function updateStreak(profile) {
       const today = todayStr();
       const yesterday = addDays(today, -1);
@@ -3632,72 +3766,180 @@
     alert(`Gün tamamlandı! Zincir: ${profile.stats.streak} Gün 🔥`);
   }
 
-  function showOtherDayDetail(dateStr) {
-    const profile = getActiveProfile();
-    const panel = document.getElementById("otherDayDetailPanel");
-    if (!panel) return;
-    const entry = (profile.plan||{})[dateStr];
-    const videosMap={}; profile.videos.forEach(v=>{videosMap[v.id]=v;});
-    if (!entry || !entry.videoIds || !entry.videoIds.length) {
-      panel.innerHTML = `<div class="text-xs text-muted">${formatDate(dateStr)} için planlı video yok.</div>`;
-      return;
-    }
-    const rows = entry.videoIds.map(id=>{
-      const v=videosMap[id]; if (!v) return "";
-      const dur=effectiveRemainingMinutes(v);
-      return `
-        <tr>
-          <td><input type="checkbox" class="other-day-video-checkbox" data-from-date="${dateStr}" data-video-id="${id}"></td>
-          <td>${v.title||"(başlıksız)"}</td>
-          <td>${dur}</td>
-        </tr>`;
-    }).join("");
-    panel.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-label">${formatDate(dateStr)} Videoları</div>
-        <div class="table-container" style="max-height:160px;margin-top:0.5rem;">
-          <table>
-            <thead><tr><th style="width:40px;">Seç</th><th>Video</th><th style="width:50px;">Dk</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-        <div class="mt-2">
-          <button type="button" class="btn-ghost text-xs" id="btnMoveSelectedFromOtherDay" data-from-date="${dateStr}">Seçilenleri BUGÜNE Taşı</button>
-        </div>
-      </div>`;
-    const btnMove = document.getElementById("btnMoveSelectedFromOtherDay");
-    if (btnMove) {
-      btnMove.addEventListener("click",()=>{
-        const fromDate=btnMove.dataset.fromDate;
-        const checkboxes = panel.querySelectorAll(".other-day-video-checkbox");
-        const ids = Array.from(checkboxes).filter(cb=>cb.checked).map(cb=>cb.dataset.videoId);
-        if (!ids.length) { alert("Önce en az bir video seç."); return; }
-        moveSelectedVideosToToday(fromDate, ids);
+  // === PDF GENERATION LOGIC ===
+  function generateWeeklyPdf() {
+      const profile = getActiveProfile();
+      // Get current view date from planner or just today
+      const today = new Date();
+      // Calculate Monday of current week
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
+      const monday = new Date(today.setDate(diff));
+      
+      const container = document.getElementById("pdfGrid");
+      container.innerHTML = "";
+      
+      // Date range text
+      const endDay = new Date(monday);
+      endDay.setDate(monday.getDate() + 6);
+      document.getElementById("pdfDateRange").textContent = 
+          `${monday.toLocaleDateString('tr-TR')} - ${endDay.toLocaleDateString('tr-TR')}`;
+      
+      const dayNames = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+      
+      // Loop 7 days
+      for (let i = 0; i < 7; i++) {
+          const currentLoopDate = new Date(monday);
+          currentLoopDate.setDate(monday.getDate() + i);
+          
+          const y = currentLoopDate.getFullYear();
+          const m = String(currentLoopDate.getMonth() + 1).padStart(2, "0");
+          const d = String(currentLoopDate.getDate()).padStart(2, "0");
+          const dateStr = `${y}-${m}-${d}`;
+          
+          const dayCard = document.createElement("div");
+          dayCard.className = "pdf-day-card";
+          
+          const isOff = (profile.settings.offDates || []).includes(dateStr);
+          const planEntry = profile.plan[dateStr];
+          
+          let contentHtml = "";
+          
+          if (isOff) {
+              contentHtml = "<div style='text-align:center; color:#999; margin-top:20px;'>TATİL</div>";
+          } else if (planEntry && planEntry.videoIds && planEntry.videoIds.length > 0) {
+              planEntry.videoIds.forEach(vidId => {
+                  const v = profile.videos.find(x => x.id === vidId);
+                  if (v) {
+                      contentHtml += `
+                        <div class="pdf-task-item">
+                            <div class="pdf-checkbox"></div>
+                            <div>
+                                <div style="font-weight:600;">${v.subject || ""}</div>
+                                <div>${v.title}</div>
+                            </div>
+                        </div>
+                      `;
+                  }
+              });
+          } else {
+              contentHtml = "<div style='text-align:center; color:#ccc; margin-top:10px;'>Plan Yok</div>";
+          }
+          
+          dayCard.innerHTML = `
+            <div class="pdf-day-header">${dayNames[i]} <span style="font-weight:normal; font-size:11px;">(${d}/${m})</span></div>
+            ${contentHtml}
+          `;
+          container.appendChild(dayCard);
+      }
+      
+      // Wait for rendering then print
+      const element = document.getElementById("pdf-export-container");
+      
+      // Create PDF
+      const { jsPDF } = window.jspdf;
+      
+      html2canvas(element, {
+          scale: 2, // High resolution
+          useCORS: true
+      }).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Haftalik_Program_${monday.toISOString().split('T')[0]}.pdf`);
+          alert("Program başarıyla indirildi.");
+      }).catch(err => {
+          console.error(err);
+          alert("PDF oluşturulurken bir hata oluştu.");
       });
-    }
   }
-
-  function moveSelectedVideosToToday(fromDate, videoIds) {
-    pushHistory();
-    const profile = getActiveProfile();
-    const targetDate = profile.currentPlanStart || todayStr();
-
-    const futureEntry = (profile.plan||{})[fromDate];
-    if (!futureEntry) return;
-
-    futureEntry.videoIds = futureEntry.videoIds.filter(id => !videoIds.includes(id));
-    if (futureEntry.videoIds.length === 0) {
-      delete profile.plan[fromDate];
-    }
-
-    if (!profile.plan[targetDate]) {
-      profile.plan[targetDate] = { videoIds: [] };
-    }
-    profile.plan[targetDate].videoIds.push(...videoIds);
-
-    saveState();
-    renderDailyPlan();
-    alert("Videolar bugünün planına taşındı. Vazgeçmek istersen yanındaki 'Geri Gönder' butonunu kullanabilirsin.");
+  
+  // === RADAR CHART LOGIC ===
+  function renderRadarChart(profile) {
+      const ctx = document.getElementById('subjectRadarChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart if any
+      if (radarChartInstance) {
+          radarChartInstance.destroy();
+      }
+      
+      // 1. Gather Data: Wrong Question Count per Subject
+      const counts = {};
+      
+      // From Wrong Questions Bank
+      (profile.wrongQuestions || []).forEach(q => {
+          const s = q.subject || "Diğer";
+          counts[s] = (counts[s] || 0) + 1;
+      });
+      
+      // From Daily Logs (History)
+      if (profile.dayMeta) {
+          Object.values(profile.dayMeta).forEach(meta => {
+              if (meta.perSubject) {
+                  Object.entries(meta.perSubject).forEach(([subj, data]) => {
+                      if (data.wrong > 0) {
+                          counts[subj] = (counts[subj] || 0) + data.wrong;
+                      }
+                  });
+              }
+              // From extra tests
+              if (meta.extraTests) {
+                  meta.extraTests.forEach(t => {
+                      if (t.wrong > 0 && t.subject) {
+                          counts[t.subject] = (counts[t.subject] || 0) + t.wrong;
+                      }
+                  });
+              }
+          });
+      }
+      
+      const labels = Object.keys(counts);
+      const dataValues = Object.values(counts);
+      
+      if (labels.length === 0) {
+          // No data state
+          // Maybe draw empty chart or leave blank
+          return;
+      }
+      
+      radarChartInstance = new Chart(ctx, {
+          type: 'radar',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'Yanlış Sayısı',
+                  data: dataValues,
+                  fill: true,
+                  backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                  borderColor: 'rgb(255, 99, 132)',
+                  pointBackgroundColor: 'rgb(255, 99, 132)',
+                  pointBorderColor: '#fff',
+                  pointHoverBackgroundColor: '#fff',
+                  pointHoverBorderColor: 'rgb(255, 99, 132)'
+              }]
+          },
+          options: {
+              elements: {
+                  line: {
+                      borderWidth: 3
+                  }
+              },
+              scales: {
+                  r: {
+                      angleLines: {
+                          display: false
+                      },
+                      suggestedMin: 0,
+                      suggestedMax: Math.max(...dataValues) + 2
+                  }
+              },
+              maintainAspectRatio: false
+          }
+      });
   }
 
   function computeDayAggregated(profile,dateStr) {
@@ -3778,6 +4020,9 @@
         <div class="stat-value">${completedCount} Video</div>
         <div class="stat-extra">Toplam Kütüphane: ${allVideos.length}</div>
       </div>`;
+      
+    // RENDER RADAR CHART HERE
+    renderRadarChart(profile);
 
     const perDay=(profile.stats && profile.stats.perDay)||{};
     const metaDays=profile.dayMeta||{};
