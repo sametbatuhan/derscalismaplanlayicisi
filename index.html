@@ -423,6 +423,10 @@
     .pomo-mini-display { display: none; font-size: 0.9rem; font-weight: 700; color: white; }
     #pomodoroWidget.minimized .pomo-mini-display { display: block; }
     #pomodoroWidget.minimized .pomo-title-text { display: none; }
+    /* YENİ BUTON VE BAŞLIK TASARIMLARI */
+    .pomo-header-controls { display: flex; gap: 0.2rem; align-items: center; }
+    .pomo-btn-icon { cursor: pointer; padding: 0.3rem; border-radius: 4px; color: white; transition: background 0.2s; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: 1.1rem; }
+    .pomo-btn-icon:hover { background: rgba(255, 255, 255, 0.2); }
 
 
     /* Manuel Mobil Görünüm (Samsung Galaxy S22 benzeri) */
@@ -1191,10 +1195,13 @@
 
   <!-- POMODORO WIDGET -->
   <div id="pomodoroWidget">
-     <div class="pomo-header" id="pomoHeader">
-         <span class="pomo-title-text">🍅 Pomodoro</span>
+<div class="pomo-header" id="pomoHeader">
+         <span class="pomo-title-text" style="font-weight:600; display:flex; align-items:center; gap:0.5rem;">🍅 Pomodoro</span>
          <span class="pomo-mini-display">25:00</span>
-         <span id="pomoToggleIcon">_</span>
+         <div class="pomo-header-controls">
+             <span id="btnPomoPopOut" class="pomo-btn-icon" title="Ekrana Sabitle">🪟</span>
+             <span id="pomoToggleIcon" class="pomo-btn-icon" title="Küçült/Büyüt">➖</span>
+         </div>
      </div>
      <div class="pomo-body">
          <div class="pomo-settings row" style="gap:0.5rem; margin-bottom:0.5rem; justify-content:center;">
@@ -5118,6 +5125,85 @@ function makeDraggable(element, handle) {
     loadState();
     
     initPomodoro(); // Init Timer
+    // --- POMODORO HER ZAMAN ÜSTTE (PiP) KODU ---
+    const btnPomoPopOut = document.getElementById("btnPomoPopOut");
+    if (btnPomoPopOut) {
+        let pipWindow = null;
+        btnPomoPopOut.addEventListener("click", async (e) => {
+            e.stopPropagation(); // Tıklayınca widget küçülmesin diye engelliyoruz
+            
+            if (!("documentPictureInPicture" in window)) {
+                alert("Tarayıcın bu özelliği henüz desteklemiyor. Lütfen güncel Chrome, Edge veya Opera kullan.");
+                return;
+            }
+
+            if (pipWindow) return; // Zaten pencere açıksa işlem yapma
+
+            const widget = document.getElementById("pomodoroWidget");
+            
+            try {
+                // Her zaman üstte kalacak yeni pencereyi oluştur
+                pipWindow = await window.documentPictureInPicture.requestWindow({
+                    width: 260,
+                    height: 170
+                });
+
+                // Mevcut tüm renk ve font ayarlarını (CSS) yeni pencereye kopyala
+                [...document.styleSheets].forEach((styleSheet) => {
+                    try {
+                        const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+                        const style = document.createElement('style');
+                        style.textContent = cssRules;
+                        pipWindow.document.head.appendChild(style);
+                    } catch (err) {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet'; link.type = styleSheet.type;
+                        link.media = styleSheet.media; link.href = styleSheet.href;
+                        pipWindow.document.head.appendChild(link);
+                    }
+                });
+
+                // Karanlık mod/Aydınlık mod temasını aktar
+                pipWindow.document.body.setAttribute("data-theme", document.body.getAttribute("data-theme"));
+                pipWindow.document.body.style.background = "var(--bg-alt)";
+                pipWindow.document.body.style.margin = "0";
+
+                // Widget'ı ana ekrandan söküp yeni pencereye tak
+                widget.style.position = "static"; // Sabitliği kaldır ki pencereye tam otursun
+                widget.style.boxShadow = "none";
+                widget.style.height = "100%"; 
+                widget.querySelector('.pomo-body').style.padding = "1.5rem";
+                widget.style.border = "none";
+                pipWindow.document.body.appendChild(widget);
+
+                // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
+                // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
+                // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
+                pipWindow.addEventListener("pagehide", () => {
+                    widget.style.position = "fixed";
+                    widget.style.bottom = "20px";
+                    widget.style.right = "20px";
+                    widget.style.boxShadow = "var(--shadow-md)";
+                    widget.style.border = "1px solid var(--border)";
+                    
+                    widget.style.height = "auto"; 
+                    widget.querySelector('.pomo-body').style.padding = "1rem"; 
+
+                    document.body.appendChild(widget);
+                    
+                    // YENİ: Tarayıcının butonu yok etmesine karşı görünürlüğü zorla
+                    const popBtn = document.getElementById("btnPomoPopOut");
+                    if(popBtn) popBtn.style.display = "flex";
+
+                    pipWindow = null;
+                });
+
+            } catch (error) {
+                console.error("PiP Hatası:", error);
+                alert("Ayrı pencere açılamadı.");
+            }
+        });
+    }
 
     // --- Firebase Auth & Bulut Yedek Entegrasyonu ---
     const authContainer   = document.getElementById("auth-container");
