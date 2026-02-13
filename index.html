@@ -5034,6 +5034,9 @@ function initPomodoro() {
     
     // TIKLAMA VE SÜRÜKLEME KONTROLÜ
     header.addEventListener("click", () => {
+        // YENİ: Eğer ayrı pencerede (PiP) isek, tıklayıp küçültmeyi tamamen iptal et
+        if (widget.style.position === "static") return; 
+
         if (pomoWasDragged) {
             pomoWasDragged = false; // Sürükleme bitti, flag'i sıfırla
             return; // Kapatma işlemini yapma
@@ -5169,32 +5172,40 @@ function makeDraggable(element, handle) {
                 pipWindow.document.body.style.margin = "0";
 
                 // Widget'ı ana ekrandan söküp yeni pencereye tak
-                widget.style.position = "static"; // Sabitliği kaldır ki pencereye tam otursun
+                widget.style.position = "static"; 
                 widget.style.boxShadow = "none";
-                widget.style.height = "100%"; 
-                widget.querySelector('.pomo-body').style.padding = "1.5rem";
                 widget.style.border = "none";
+                widget.style.height = "100%"; 
+                widget.style.width = "100%"; 
+                widget.querySelector('.pomo-body').style.padding = "1.5rem";
+                
+                // YENİ: Tarayıcının kendi butonlarıyla çakışmamak için bizimkileri PiP modunda gizle
+                const controls = widget.querySelector('.pomo-header-controls');
+                if (controls) controls.style.display = "none";
+                
+                // YENİ: Sünme ve beyazlık bug'ını çözmek için arkaplanı pencereye tam oturt
+                pipWindow.document.body.style.height = "100vh";
+                pipWindow.document.body.style.display = "flex";
+                pipWindow.document.body.style.flexDirection = "column";
+
                 pipWindow.document.body.appendChild(widget);
 
-                // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
-                // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
                 // Kullanıcı o küçük pencereyi kapatırsa, sayacı ana ekrana geri getir
                 pipWindow.addEventListener("pagehide", () => {
                     widget.style.position = "fixed";
                     widget.style.bottom = "20px";
                     widget.style.right = "20px";
+                    widget.style.width = "260px";
+                    widget.style.height = "auto"; 
                     widget.style.boxShadow = "var(--shadow-md)";
                     widget.style.border = "1px solid var(--border)";
                     
-                    widget.style.height = "auto"; 
                     widget.querySelector('.pomo-body').style.padding = "1rem"; 
 
-                    document.body.appendChild(widget);
-                    
-                    // YENİ: Tarayıcının butonu yok etmesine karşı görünürlüğü zorla
-                    const popBtn = document.getElementById("btnPomoPopOut");
-                    if(popBtn) popBtn.style.display = "flex";
+                    // Pencere kapanınca butonlarımızı ana ekranda geri getir
+                    if (controls) controls.style.display = "flex"; 
 
+                    document.body.appendChild(widget);
                     pipWindow = null;
                 });
 
