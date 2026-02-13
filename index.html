@@ -354,14 +354,30 @@
     }
 
     /* POMODORO WIDGET */
-    #pomodoroWidget {
-        position: fixed; bottom: 20px; right: 20px; z-index: 9000;
-        background: var(--bg-alt); border: 1px solid var(--border);
-        border-radius: 12px; box-shadow: var(--shadow-md);
-        width: 260px; overflow: hidden;
-        transition: transform 0.3s, opacity 0.3s;
-        display: flex; flex-direction: column;
-    }
+   #pomodoroWidget {
+    position: fixed; 
+    bottom: 20px;      /* Başlangıç konumu */
+    right: 20px;       /* Başlangıç konumu */
+    left: auto;        /* Bunu ekle: sürükleme başladığında ezilecek */
+    top: auto;         /* Bunu ekle: sürükleme başladığında ezilecek */
+    z-index: 9000;
+    background: var(--bg-alt); 
+    border: 1px solid var(--border);
+    border-radius: 12px; 
+    box-shadow: var(--shadow-md);
+    width: 260px; 
+    overflow: hidden;
+    transition: transform 0.3s, opacity 0.3s; /* Buradaki transform kalsın ama 'all' olmasın */
+    display: flex; 
+    flex-direction: column;
+    touch-action: none; /* Mobil tarayıcılarda kaydırmayı engellemek için */
+}
+
+/* Başlığa taşıma imleci ekle */
+.pomo-header {
+    cursor: move; /* İmleç taşıma simgesi olsun */
+    /* Diğer mevcut özellikler kalsın... */
+}
     #pomodoroWidget.minimized {
         width: 140px; height: 50px;
     }
@@ -4909,133 +4925,142 @@
   }
   
   // --- POMODORO LOGIC ---
-  function initPomodoro() {
-      const timerDisplay = document.getElementById("pomoTimerDisplay");
-      const miniDisplay = document.querySelector(".pomo-mini-display");
-      const btnStart = document.getElementById("btnPomoStart");
-      const btnReset = document.getElementById("btnPomoReset");
-      const widget = document.getElementById("pomodoroWidget");
-      const header = document.getElementById("pomoHeader");
-      const modeBtns = document.querySelectorAll(".pomo-btn-mode");
-      const workInput = document.getElementById("pomoWorkInput");
-      const breakInput = document.getElementById("pomoBreakInput");
-      
-      // Play beep sound
-      const playAlarm = () => {
-          try {
-              const ctx = new (window.AudioContext || window.webkitAudioContext)();
-              const osc = ctx.createOscillator();
-              osc.type = "sine";
-              osc.frequency.setValueAtTime(880, ctx.currentTime);
-              osc.connect(ctx.destination);
-              osc.start();
-              osc.stop(ctx.currentTime + 0.5);
-              setTimeout(() => {
-                 const osc2 = ctx.createOscillator();
-                 osc2.type = "sine"; 
-                 osc2.frequency.setValueAtTime(880, ctx.currentTime);
-                 osc2.connect(ctx.destination);
-                 osc2.start();
-                 osc2.stop(ctx.currentTime + 0.5);
-              }, 600);
-          } catch(e) { console.error("Audio error", e); }
-          
-          // Notification
-          if (Notification.permission === "granted") {
-              new Notification("Süre Doldu!", { body: "Pomodoro sayacı bitti." });
-          } else if (Notification.permission !== "denied") {
-              Notification.requestPermission();
-          }
-      };
+// Sürükleme takibi için anahtar (Fonksiyonun dışında olmalı)
+// Sürükleme durumunu takip eden anahtar (fonksiyonların dışında olmalı)
+let pomoWasDragged = false; 
 
-      const updateDisplay = () => {
-          const m = Math.floor(pomoTimeLeft / 60);
-          const s = pomoTimeLeft % 60;
-          const str = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-          timerDisplay.textContent = str;
-          miniDisplay.textContent = str;
-          
-          // GÜNCELLEME: Mod'a göre sekme başlığını değiştir
-          const titleLabel = pomoMode === 'work' ? "Ders Çalışma" : "Mola";
-          document.title = `${str} - ${titleLabel}`;
-      };
-      
-      const getDuration = () => {
-          if (pomoMode === 'work') return parseInt(workInput.value) || 25;
-          return parseInt(breakInput.value) || 5;
-      };
-      
-      const setMode = (m) => {
-          pomoMode = m;
-          pomoIsRunning = false;
-          clearInterval(pomoInterval);
-          btnStart.textContent = "Başlat";
-          
-          modeBtns.forEach(b => {
-             b.classList.toggle("active", b.dataset.mode === m);
-          });
-          
-          pomoTimeLeft = getDuration() * 60;
-          updateDisplay();
-      };
-      
-      const resetTimer = () => {
-          pomoIsRunning = false;
-          clearInterval(pomoInterval);
-          btnStart.textContent = "Başlat";
-          pomoTimeLeft = getDuration() * 60;
-          updateDisplay();
-      };
-      
-      // Input listeners - update timer immediately if not running
-      workInput.addEventListener('change', () => {
-          if (!pomoIsRunning && pomoMode === 'work') resetTimer();
-      });
-      breakInput.addEventListener('change', () => {
-          if (!pomoIsRunning && pomoMode === 'break') resetTimer();
-      });
-      
-      btnStart.addEventListener("click", () => {
-          if (pomoIsRunning) {
-              clearInterval(pomoInterval);
-              pomoIsRunning = false;
-              btnStart.textContent = "Devam Et";
-          } else {
-              pomoIsRunning = true;
-              btnStart.textContent = "Durdur";
-              pomoInterval = setInterval(() => {
-                  pomoTimeLeft--;
-                  if (pomoTimeLeft <= 0) {
-                      clearInterval(pomoInterval);
-                      pomoIsRunning = false;
-                      playAlarm();
-                      pomoTimeLeft = 0;
-                      btnStart.textContent = "Bitti";
-                  }
-                  updateDisplay();
-              }, 1000);
-          }
-      });
-      
-      btnReset.addEventListener("click", () => {
-          resetTimer();
-      });
-      
-      modeBtns.forEach(btn => {
-          btn.addEventListener("click", () => setMode(btn.dataset.mode));
-      });
-      
-      header.addEventListener("click", () => {
-          widget.classList.toggle("minimized");
-          const icon = document.getElementById("pomoToggleIcon");
-          icon.textContent = widget.classList.contains("minimized") ? "□" : "_";
-      });
-      
-      // Init
-      setMode("work");
-      if (Notification.permission !== "denied") Notification.requestPermission();
-  }
+function initPomodoro() {
+    const timerDisplay = document.getElementById("pomoTimerDisplay");
+    const miniDisplay = document.querySelector(".pomo-mini-display");
+    const btnStart = document.getElementById("btnPomoStart");
+    const btnReset = document.getElementById("btnPomoReset");
+    const widget = document.getElementById("pomodoroWidget");
+    const header = document.getElementById("pomoHeader");
+    const modeBtns = document.querySelectorAll(".pomo-btn-mode");
+    const workInput = document.getElementById("pomoWorkInput");
+    const breakInput = document.getElementById("pomoBreakInput");
+    
+    const playAlarm = () => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) { console.error("Ses hatası", e); }
+        if (Notification.permission === "granted") {
+            new Notification("Süre Doldu!", { body: "Pomodoro sayacı bitti." });
+        }
+    };
 
+    const updateDisplay = () => {
+        const m = Math.floor(pomoTimeLeft / 60);
+        const s = pomoTimeLeft % 60;
+        const str = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        timerDisplay.textContent = str;
+        miniDisplay.textContent = str;
+        document.title = `${str} - ${pomoMode === 'work' ? 'Çalışma' : 'Mola'}`;
+    };
+    
+    const resetTimer = () => {
+        pomoIsRunning = false;
+        clearInterval(pomoInterval);
+        btnStart.textContent = "Başlat";
+        pomoTimeLeft = (pomoMode === 'work' ? (parseInt(workInput.value) || 25) : (parseInt(breakInput.value) || 5)) * 60;
+        updateDisplay();
+    };
+    
+    btnStart.addEventListener("click", () => {
+        if (pomoIsRunning) {
+            clearInterval(pomoInterval);
+            pomoIsRunning = false;
+            btnStart.textContent = "Devam Et";
+        } else {
+            pomoIsRunning = true;
+            btnStart.textContent = "Durdur";
+            pomoInterval = setInterval(() => {
+                pomoTimeLeft--;
+                if (pomoTimeLeft <= 0) {
+                    clearInterval(pomoInterval);
+                    pomoIsRunning = false;
+                    playAlarm();
+                    btnStart.textContent = "Bitti";
+                }
+                updateDisplay();
+            }, 1000);
+        }
+    });
+    
+    btnReset.addEventListener("click", resetTimer);
+    
+    modeBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            pomoMode = btn.dataset.mode;
+            modeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === pomoMode));
+            resetTimer();
+        });
+    });
+    
+    // TIKLAMA VE SÜRÜKLEME KONTROLÜ
+    header.addEventListener("click", () => {
+        if (pomoWasDragged) {
+            pomoWasDragged = false; // Sürükleme bitti, flag'i sıfırla
+            return; // Kapatma işlemini yapma
+        }
+        widget.classList.toggle("minimized");
+        const icon = document.getElementById("pomoToggleIcon");
+        icon.textContent = widget.classList.contains("minimized") ? "□" : "_";
+    });
+
+    // Sürükleme özelliğini başlat
+    makeDraggable(widget, header);
+    
+    // İlk kurulum
+    pomoMode = "work";
+    pomoTimeLeft = 25 * 60;
+    if (Notification.permission !== "denied") Notification.requestPermission();
+}
+
+// YARDIMCI SÜRÜKLEME FONKSİYONU
+function makeDraggable(element, handle) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let startX = 0, startY = 0;
+
+    handle.onmousedown = function(e) {
+        e = e || window.event;
+        // Buton veya inputlara tıklandıysa sürükleme yapma
+        if (e.target.tagName === 'BUTTON' || e.target.classList.contains('pomo-btn-mode') || e.target.tagName === 'INPUT') return;
+        
+        pomoWasDragged = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        document.onmouseup = function() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        };
+
+        document.onmousemove = function(e) {
+            e = e || window.event;
+            // 5 pikselden fazla hareket varsa sürükleme kabul et
+            if (Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5) {
+                pomoWasDragged = true;
+            }
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            element.style.top = (element.offsetTop - pos2) + "px";
+            element.style.left = (element.offsetLeft - pos1) + "px";
+            element.style.bottom = "auto";
+            element.style.right = "auto";
+        };
+    };
+}
   function renderAll() {
     const profile = getActiveProfile();
     
