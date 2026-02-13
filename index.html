@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='20' y='20' width='60' height='60' rx='10' fill='%2334495e'/%3E%3Cline x1='20' y1='40' x2='80' y2='40' stroke='%23ecf0f1' stroke-width='5'/%3E%3Cpath d='M40 60 L50 70 L65 50' fill='none' stroke='%232ecc71' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='35' y1='10' x2='35' y2='30' stroke='%23e74c3c' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='65' y1='10' x2='65' y2='30' stroke='%23e74c3c' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+  <!-- Cropper.js for Image Editing -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   
   <style>
     :root {
@@ -281,6 +281,26 @@
     }
 
     
+    /* TOPLU İŞLEM POPUP BARI */
+    .bulk-action-bar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--text);
+        color: var(--bg);
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-full);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        z-index: 9999;
+        animation: slideUp 0.3s ease;
+    }
+    .bulk-action-bar button.btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--bg); }
+    @keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 20px; opacity: 1; } }
+
     /* Hız seçimi görsel stili */
     .speed-select {
       border-radius: 999px;
@@ -709,7 +729,8 @@
             <table>
               <thead>
                 <tr>
-                  <th style="width:50px;">#</th>
+                  <th style="width:30px;"><input type="checkbox" id="selectAllFilter"></th>
+                  <th style="width:40px;">#</th>
                   <th>Başlık</th>
                   <th>Ders</th>
                   <th>Konu</th>
@@ -1020,6 +1041,13 @@
             </div>
         </div>
     </div>
+  </div>
+  
+  <!-- TOPLU İŞLEM POPUP BARI -->
+  <div id="bulkActionBar" class="bulk-action-bar" style="display:none;">
+    <span id="bulkActionText" style="font-weight:600; font-size:0.9rem;">0 video seçildi</span>
+    <button id="btnBulkDelete" class="btn-danger text-sm" style="padding:0.4rem 1rem;">🗑️ Sil</button>
+    <button id="btnBulkCancel" class="btn-ghost text-sm" style="color:var(--bg); border-color:var(--bg); padding:0.4rem 1rem;">İptal</button>
   </div>
   
 </div>
@@ -1514,8 +1542,25 @@
     videos = getFilteredVideosForFiltersPage(videos);
     videos.sort((a,b)=>(a.order||0)-(b.order||0));
 
+    // Select All (Filtreler için)
+    const selectAllFilter = document.getElementById("selectAllFilter");
+    if (selectAllFilter) {
+        selectAllFilter.checked = false;
+        selectAllFilter.onchange = (e) => {
+            document.querySelectorAll(".filter-video-selection").forEach(cb => cb.checked = e.target.checked);
+            handleSelectionChange();
+        };
+    }
+
     videos.forEach((v,idx)=>{
       const tr = document.createElement("tr");
+
+      const tdCheck = document.createElement("td");
+      const cbSel = document.createElement("input");
+      cbSel.type = "checkbox"; cbSel.className = "filter-video-selection";
+      cbSel.dataset.videoId = v.id;
+      cbSel.addEventListener("change", handleSelectionChange);
+      tdCheck.appendChild(cbSel);
 
       const tdIdx = document.createElement("td");
       tdIdx.textContent = String(idx+1);
@@ -1570,9 +1615,11 @@
       });
       tdAct.appendChild(btnDel);
 
-      tr.append(tdIdx,tdTitle,tdSubj,tdTopic,tdRem,tdDone,tdAct);
+      tr.append(tdCheck,tdIdx,tdTitle,tdSubj,tdTopic,tdRem,tdDone,tdAct);
       tbody.appendChild(tr);
     });
+    
+    handleSelectionChange();
   }
 
   // --- VIDEO KÜTÜPHANESİ (AKTİF ve TAMAMLANANLAR AYRI) ---
@@ -1613,11 +1660,12 @@
       tr.setAttribute("draggable","true");
       tr.dataset.videoId = v.id;
 
-      // Checkbox for bulk move (NEW)
+      // Checkbox for bulk move/delete
       const tdCheck = document.createElement("td");
       const cbSel = document.createElement("input");
       cbSel.type = "checkbox"; cbSel.className = "active-video-selection";
       cbSel.dataset.videoId = v.id;
+      cbSel.addEventListener("change", handleSelectionChange);
       tdCheck.appendChild(cbSel);
 
       const tdIdx = document.createElement("td");
@@ -1720,9 +1768,10 @@
     const selectAllActive = document.getElementById("selectAllActive");
     if (selectAllActive) {
         selectAllActive.checked = false;
-        selectAllActive.addEventListener("change", (e) => {
+        selectAllActive.onchange = (e) => {
             document.querySelectorAll(".active-video-selection").forEach(cb => cb.checked = e.target.checked);
-        });
+            handleSelectionChange();
+        };
     }
 
 
@@ -1772,6 +1821,7 @@
       const cbSel = document.createElement("input");
       cbSel.type = "checkbox"; cbSel.className = "completed-video-selection";
       cbSel.dataset.videoId = v.id;
+      cbSel.addEventListener("change", handleSelectionChange);
       tdCheck.appendChild(cbSel);
 
       const tdIdx = document.createElement("td");
@@ -1877,10 +1927,13 @@
     const selectAllCompleted = document.getElementById("selectAllCompleted");
     if (selectAllCompleted) {
         selectAllCompleted.checked = false;
-        selectAllCompleted.addEventListener("change", (e) => {
+        selectAllCompleted.onchange = (e) => {
             document.querySelectorAll(".completed-video-selection").forEach(cb => cb.checked = e.target.checked);
-        });
+            handleSelectionChange();
+        };
     }
+
+    handleSelectionChange();
 
     const videoSummary = document.getElementById("videoSummary");
     const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
@@ -1929,6 +1982,45 @@
     profile.stats={perDay:{}}; profile.currentPlanStart=null;
     saveState();
     renderAll();
+  }
+  
+  // --- TOPLU İŞLEM (POPUP) YARDIMCILARI ---
+  function handleSelectionChange() {
+      const selectedBoxes = document.querySelectorAll(".active-video-selection:checked, .completed-video-selection:checked, .filter-video-selection:checked");
+      const count = selectedBoxes.length;
+      const bar = document.getElementById("bulkActionBar");
+      const txt = document.getElementById("bulkActionText");
+      if (bar && txt) {
+          if (count > 0) {
+              txt.textContent = `${count} video seçildi`;
+              bar.style.display = "flex";
+          } else {
+              bar.style.display = "none";
+          }
+      }
+  }
+
+  function bulkDeleteSelected() {
+      const selectedBoxes = document.querySelectorAll(".active-video-selection:checked, .completed-video-selection:checked, .filter-video-selection:checked");
+      const count = selectedBoxes.length;
+      if (count === 0) return;
+      if (!confirm(`Seçilen ${count} videoyu kalıcı olarak silmek istediğine emin misin?`)) return;
+
+      pushHistory();
+      const profile = getActiveProfile();
+      const idsToDelete = Array.from(selectedBoxes).map(cb => cb.dataset.videoId);
+
+      profile.videos = profile.videos.filter(v => !idsToDelete.includes(v.id));
+
+      saveState();
+      regeneratePlan(profile);
+      renderAll();
+      handleSelectionChange(); // İşlem bitince popup'ı kapat
+  }
+
+  function cancelBulkAction() {
+      document.querySelectorAll(".active-video-selection, .completed-video-selection, .filter-video-selection, #selectAllActive, #selectAllCompleted, #selectAllFilter").forEach(cb => cb.checked = false);
+      handleSelectionChange();
   }
 
   function exportCsv() {
@@ -4974,6 +5066,10 @@
     document.getElementById("btnShuffleWrongQuestions").addEventListener("click", startWqShuffle);
     document.getElementById("btnBackFromShuffle").addEventListener("click", exitShuffleMode);
     document.getElementById("btnShuffleNext").addEventListener("click", nextShuffleQuestion);
+    
+    // YENİ: Toplu İşlem Butonları (Popup)
+    document.getElementById("btnBulkDelete")?.addEventListener("click", bulkDeleteSelected);
+    document.getElementById("btnBulkCancel")?.addEventListener("click", cancelBulkAction);
 
     renderAll();
   });
