@@ -88,9 +88,28 @@
       box-shadow: var(--shadow-sm);
     }
     .header-left, .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-    .app-title { font-weight: 700; font-size: 1.2rem; color: var(--text); }
+    .app-title { font-weight: 700; font-size: 1.2rem; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
     .small-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
     #activeProfileSummary { font-size: 0.8rem; color: var(--text-muted); background: var(--bg); padding: 0.2rem 0.6rem; border-radius: var(--radius-full); border: 1px solid var(--border); }
+
+    /* Streak Badge */
+    .streak-badge {
+        background: linear-gradient(135deg, #f97316, #ea580c);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: var(--radius-full);
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        box-shadow: 0 2px 4px rgba(234, 88, 12, 0.2);
+        transition: transform 0.2s;
+    }
+    .streak-badge:hover { transform: scale(1.05); }
+    .fire-anim { animation: firePulse 1.5s infinite; }
+    @keyframes firePulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
 
     /* Undo/Redo */
     .history-controls { display: flex; gap: 0.25rem; margin-right: 1rem; border-right: 1px solid var(--border); padding-right: 1rem; }
@@ -272,7 +291,7 @@
 
     /* Print */
     @media print {
-        nav.sidebar, header.app-header, #page-notes-controls { display: none !important; }
+        nav.sidebar, header.app-header, #page-notes-controls, #pomodoroWidget { display: none !important; }
         .layout { display: block !important; overflow: visible !important; height: auto !important; }
         main.content { padding: 0 !important; overflow: visible !important; }
         #page-notes { display: block !important; }
@@ -328,6 +347,36 @@
       color: #b91c1c;
     }
 
+    /* POMODORO WIDGET */
+    #pomodoroWidget {
+        position: fixed; bottom: 20px; right: 20px; z-index: 9000;
+        background: var(--bg-alt); border: 1px solid var(--border);
+        border-radius: 12px; box-shadow: var(--shadow-md);
+        width: 260px; overflow: hidden;
+        transition: transform 0.3s, opacity 0.3s;
+        display: flex; flex-direction: column;
+    }
+    #pomodoroWidget.minimized {
+        width: 140px; height: 50px;
+    }
+    .pomo-header {
+        background: var(--accent); color: white; padding: 0.5rem 0.75rem;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .pomo-body { padding: 1rem; text-align: center; }
+    #pomodoroWidget.minimized .pomo-body { display: none; }
+    .pomo-timer { font-size: 2.5rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; margin: 0.5rem 0; }
+    .pomo-controls { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+    .pomo-mode-select { display: flex; justify-content: center; gap: 0.3rem; margin-bottom: 0.5rem; }
+    .pomo-btn-mode { font-size: 0.7rem; padding: 0.2rem 0.4rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-muted); }
+    .pomo-btn-mode.active { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+    
+    .pomo-mini-display { display: none; font-size: 0.9rem; font-weight: 700; color: white; }
+    #pomodoroWidget.minimized .pomo-mini-display { display: block; }
+    #pomodoroWidget.minimized .pomo-title-text { display: none; }
+
+
     /* Manuel Mobil Görünüm (Samsung Galaxy S22 benzeri) */
     body[data-view="mobile"] {
       max-width: 430px;
@@ -365,6 +414,7 @@
     }
     body[data-view="mobile"] .wq-grid { grid-template-columns: repeat(2, 1fr); }
     body[data-view="mobile"] .wq-thumb-grid { grid-template-columns: repeat(2, 1fr); }
+    body[data-view="mobile"] #pomodoroWidget { bottom: 70px; right: 10px; width: 220px; }
 
 
 @media (max-width: 768px) {
@@ -426,7 +476,10 @@
         <button id="btnRedo" class="btn-icon" title="İleri Al" disabled>↪</button>
       </div>
       <div>
-        <div class="app-title">Ders Çalışma Planlayıcısı</div>
+        <div class="app-title">
+            Planlayıcı
+            <span id="streakBadge" class="streak-badge" style="display:none;">🔥 0</span>
+        </div>
         <div id="activeProfileSummary"></div>
         <div id="loginStatus" class="text-sm" style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;"></div>
       </div>
@@ -1049,6 +1102,36 @@
     <button id="btnBulkDelete" class="btn-danger text-sm" style="padding:0.4rem 1rem;">🗑️ Sil</button>
     <button id="btnBulkCancel" class="btn-ghost text-sm" style="color:var(--bg); border-color:var(--bg); padding:0.4rem 1rem;">İptal</button>
   </div>
+
+  <!-- POMODORO WIDGET -->
+  <div id="pomodoroWidget">
+     <div class="pomo-header" id="pomoHeader">
+         <span class="pomo-title-text">🍅 Focus Mode</span>
+         <span class="pomo-mini-display">25:00</span>
+         <span id="pomoToggleIcon">_</span>
+     </div>
+     <div class="pomo-body">
+         <div class="pomo-settings row" style="gap:0.5rem; margin-bottom:0.5rem; justify-content:center;">
+             <div style="display:flex; flex-direction:column; align-items:center;">
+                 <span style="font-size:0.6rem; color:var(--text-muted);">Çalışma</span>
+                 <input type="number" id="pomoWorkInput" value="25" min="1" style="width:50px; text-align:center; padding:0.2rem;">
+             </div>
+             <div style="display:flex; flex-direction:column; align-items:center;">
+                 <span style="font-size:0.6rem; color:var(--text-muted);">Mola</span>
+                 <input type="number" id="pomoBreakInput" value="5" min="1" style="width:50px; text-align:center; padding:0.2rem;">
+             </div>
+         </div>
+         <div class="pomo-mode-select">
+             <button class="pomo-btn-mode active" data-mode="work">Çalış</button>
+             <button class="pomo-btn-mode" data-mode="break">Mola</button>
+         </div>
+         <div class="pomo-timer" id="pomoTimerDisplay">25:00</div>
+         <div class="pomo-controls">
+             <button id="btnPomoStart" style="padding:0.4rem 1rem;">Başlat</button>
+             <button id="btnPomoReset" class="btn-ghost" style="padding:0.4rem 1rem;">Sıfırla</button>
+         </div>
+     </div>
+  </div>
   
 </div>
 <script>
@@ -1076,6 +1159,12 @@
   let wqShuffleActive = false; // Karışık çözme modunda mıyız?
   let currentShuffleList = [];
   let currentShuffleIndex = 0;
+
+  // POMODORO DEĞİŞKENLERİ
+  let pomoInterval = null;
+  let pomoTimeLeft = 25 * 60;
+  let pomoIsRunning = false;
+  let pomoMode = "work"; // work, break
 
   function uuid() {
     return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -1275,7 +1364,7 @@
       },
       plan: {},
       dayMeta: {},
-      stats: { perDay: {} },
+      stats: { perDay: {}, streak: 0, lastStudyDate: null }, // STREAK ADDED
       currentPlanStart: null
     };
   }
@@ -1305,7 +1394,11 @@
     // Geriye dönük uyumluluk: wrongQuestions ve customFolders array yoksa ekle
     state.profiles.forEach(p => {
         if (!p.wrongQuestions) p.wrongQuestions = [];
-        if (!p.customFolders) p.customFolders = []; // YENİ
+        if (!p.customFolders) p.customFolders = [];
+        // STREAK BACKWARD COMPATIBILITY
+        if (!p.stats) p.stats = { perDay: {} };
+        if (p.stats.streak === undefined) p.stats.streak = 0;
+        if (p.stats.lastStudyDate === undefined) p.stats.lastStudyDate = null;
     });
 
     updateUndoRedoUI();
@@ -1456,7 +1549,25 @@
     const remainingReal = activeVideos.reduce((s,v)=>s+effectiveRemainingMinutes(v),0);
     summaryEl.textContent =
       `${profile.name}: ${activeVideos.length} aktif video · Kalan: ${remainingReal} dk`;
+
+    renderStreak(profile);
   }
+  
+  // STREAK RENDER
+  function renderStreak(profile) {
+      const streakBadge = document.getElementById("streakBadge");
+      const streak = (profile.stats && profile.stats.streak) ? profile.stats.streak : 0;
+      
+      if (streak > 0) {
+          streakBadge.style.display = "flex";
+          streakBadge.innerHTML = `🔥 ${streak} Günlük Seri`;
+          if (streak > 3) streakBadge.classList.add("fire-anim");
+          else streakBadge.classList.remove("fire-anim");
+      } else {
+          streakBadge.style.display = "none";
+      }
+  }
+
   function addProfile() {
     pushHistory();
     const name = prompt("Yeni profil adı:");
@@ -3296,6 +3407,29 @@
       }
   }
 
+  function updateStreak(profile) {
+      const today = todayStr();
+      const yesterday = addDays(today, -1);
+      
+      // Ensure stats object exists
+      if (!profile.stats) profile.stats = {};
+      if (profile.stats.streak === undefined) profile.stats.streak = 0;
+      
+      const lastStudy = profile.stats.lastStudyDate;
+      
+      if (lastStudy === today) {
+          // Already counted for today, do nothing
+      } else if (lastStudy === yesterday) {
+          // Streak continues
+          profile.stats.streak += 1;
+      } else {
+          // Broken or new
+          profile.stats.streak = 1;
+      }
+      
+      profile.stats.lastStudyDate = today;
+  }
+
   function completeCurrentDay() {
     pushHistory();
     const profile = getActiveProfile();
@@ -3308,6 +3442,9 @@
     
     // Determine the LOG date (System date, meaning TODAY)
     const logDate = todayStr(); 
+    
+    // UPDATE STREAK
+    updateStreak(profile);
 
     // Extract stats for stats engine
     const entry = profile.plan[currentDate] || { videoIds: [] };
@@ -3492,6 +3629,7 @@
     renderCompletionEstimates();
     renderVideos();
     renderProfileSelector();
+    alert(`Gün tamamlandı! Zincir: ${profile.stats.streak} Gün 🔥`);
   }
 
   function showOtherDayDetail(dateStr) {
@@ -4524,6 +4662,134 @@
           // Not: Kullanıcıya sessizce güncelleme yapıyoruz, popup ile rahatsız etmeye gerek yok.
       }
   }
+  
+  // --- POMODORO LOGIC ---
+  function initPomodoro() {
+      const timerDisplay = document.getElementById("pomoTimerDisplay");
+      const miniDisplay = document.querySelector(".pomo-mini-display");
+      const btnStart = document.getElementById("btnPomoStart");
+      const btnReset = document.getElementById("btnPomoReset");
+      const widget = document.getElementById("pomodoroWidget");
+      const header = document.getElementById("pomoHeader");
+      const modeBtns = document.querySelectorAll(".pomo-btn-mode");
+      const workInput = document.getElementById("pomoWorkInput");
+      const breakInput = document.getElementById("pomoBreakInput");
+      
+      // Play beep sound
+      const playAlarm = () => {
+          try {
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(880, ctx.currentTime);
+              osc.connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.5);
+              setTimeout(() => {
+                 const osc2 = ctx.createOscillator();
+                 osc2.type = "sine"; 
+                 osc2.frequency.setValueAtTime(880, ctx.currentTime);
+                 osc2.connect(ctx.destination);
+                 osc2.start();
+                 osc2.stop(ctx.currentTime + 0.5);
+              }, 600);
+          } catch(e) { console.error("Audio error", e); }
+          
+          // Notification
+          if (Notification.permission === "granted") {
+              new Notification("Süre Doldu!", { body: "Pomodoro sayacı bitti." });
+          } else if (Notification.permission !== "denied") {
+              Notification.requestPermission();
+          }
+      };
+
+      const updateDisplay = () => {
+          const m = Math.floor(pomoTimeLeft / 60);
+          const s = pomoTimeLeft % 60;
+          const str = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+          timerDisplay.textContent = str;
+          miniDisplay.textContent = str;
+          
+          // GÜNCELLEME: Mod'a göre sekme başlığını değiştir
+          const titleLabel = pomoMode === 'work' ? "Ders Çalışma" : "Mola";
+          document.title = `${str} - ${titleLabel}`;
+      };
+      
+      const getDuration = () => {
+          if (pomoMode === 'work') return parseInt(workInput.value) || 25;
+          return parseInt(breakInput.value) || 5;
+      };
+      
+      const setMode = (m) => {
+          pomoMode = m;
+          pomoIsRunning = false;
+          clearInterval(pomoInterval);
+          btnStart.textContent = "Başlat";
+          
+          modeBtns.forEach(b => {
+             b.classList.toggle("active", b.dataset.mode === m);
+          });
+          
+          pomoTimeLeft = getDuration() * 60;
+          updateDisplay();
+      };
+      
+      const resetTimer = () => {
+          pomoIsRunning = false;
+          clearInterval(pomoInterval);
+          btnStart.textContent = "Başlat";
+          pomoTimeLeft = getDuration() * 60;
+          updateDisplay();
+      };
+      
+      // Input listeners - update timer immediately if not running
+      workInput.addEventListener('change', () => {
+          if (!pomoIsRunning && pomoMode === 'work') resetTimer();
+      });
+      breakInput.addEventListener('change', () => {
+          if (!pomoIsRunning && pomoMode === 'break') resetTimer();
+      });
+      
+      btnStart.addEventListener("click", () => {
+          if (pomoIsRunning) {
+              clearInterval(pomoInterval);
+              pomoIsRunning = false;
+              btnStart.textContent = "Devam Et";
+          } else {
+              pomoIsRunning = true;
+              btnStart.textContent = "Durdur";
+              pomoInterval = setInterval(() => {
+                  pomoTimeLeft--;
+                  if (pomoTimeLeft <= 0) {
+                      clearInterval(pomoInterval);
+                      pomoIsRunning = false;
+                      playAlarm();
+                      pomoTimeLeft = 0;
+                      btnStart.textContent = "Bitti";
+                  }
+                  updateDisplay();
+              }, 1000);
+          }
+      });
+      
+      btnReset.addEventListener("click", () => {
+          resetTimer();
+      });
+      
+      modeBtns.forEach(btn => {
+          btn.addEventListener("click", () => setMode(btn.dataset.mode));
+      });
+      
+      header.addEventListener("click", () => {
+          widget.classList.toggle("minimized");
+          const icon = document.getElementById("pomoToggleIcon");
+          icon.textContent = widget.classList.contains("minimized") ? "□" : "_";
+      });
+      
+      // Init
+      setMode("work");
+      if (Notification.permission !== "denied") Notification.requestPermission();
+  }
 
   function renderAll() {
     const profile = getActiveProfile();
@@ -4558,6 +4824,9 @@
     }
 
     loadState();
+    
+    initPomodoro(); // Init Timer
+
     // --- Firebase Auth & Bulut Yedek Entegrasyonu ---
     const authContainer   = document.getElementById("auth-container");
     const appContainer    = document.getElementById("app-container");
