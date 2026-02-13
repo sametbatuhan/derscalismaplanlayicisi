@@ -79,10 +79,12 @@
     
     html, body {
       margin: 0; padding: 0;
+      height: 100%;
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg); color: var(--text); line-height: 1.5;
     }
 
+    #app-container { height: 100%; } /* EKLENDİ: Taşıyıcıyı da tam ekran yaptık */
     #app { height: 100%; display: flex; flex-direction: column; }
 
     /* Header */
@@ -569,10 +571,6 @@
         <div class="row" style="gap:0.5rem;">
           <button id="btnSetApiKey" class="btn-ghost" title="Gemini API Anahtarı Gir">🔑 API</button>
           <button id="btnToggleTheme" class="btn-ghost">Açık/Koyu</button>
-          <select id="viewModeSelect" style="width:auto;">
-            <option value="desktop">Masaüstü</option>
-            <option value="mobile">Mobil</option>
-          </select>
           <button id="btnLogoutTop" class="btn-ghost" style="display:none;">Çıkış</button>
         </div>
       </div>
